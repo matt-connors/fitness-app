@@ -1,50 +1,18 @@
-# Welcome to your Expo app 👋
+# Fitness App
+This directed study project aims to develop a comprehensive fitness application for iOS and Android platforms. The app will focus on providing users with the tools to log exercises, create and manage workout routines, and track their progress over time. It will leverage advanced technologies like React Native, GraphQL, and Cloudflare to deliver a seamless and efficient user experience. The app will also explore the potential of AI to enhance user engagement and personalization, including features like exercise recommendations and recovery analysis.
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Working With the Codebase
 
-## Get started
+In order to efficiently, build, test, manage, and update the app, Expo is used in compliment with React Native. Since IOS development on Windows is not reasonably feasible (by Apple's intentions), Expo EAS is used for building the app in the cloud and deploying to the App store.
 
-1. Install dependencies
+### Local Development
 
-   ```bash
-   npm install
-   ```
+Run `npx expo start` to start a local development server that automatically listens for changes. Press the `s` key to switch to Expo Go (the app) in order to preview the app on a physical device.
+* This local development server has other options for running locally in a browser and on Android devices.
 
-2. Start the app
+See https://docs.expo.dev/tutorial/create-your-first-app/ for more info regarding "hello world" setup
 
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### Build
+TODO: This is not needed until we want to use our app standalone, without using Expo Go.
+- https://docs.expo.dev/build-reference/simulators/#installing-build-on-the-simulator
+- https://docs.expo.dev/build/setup/
