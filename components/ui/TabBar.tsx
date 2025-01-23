@@ -1,4 +1,4 @@
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Animated } from 'react-native';
 import { useLinkBuilder } from '@react-navigation/native';
 import { Text, PlatformPressable } from '@react-navigation/elements';
 import { TabBarIcon, TabBarIconName } from './TabBarIcons';
@@ -10,6 +10,7 @@ import type { BottomTabDescriptorMap } from '@react-navigation/bottom-tabs/lib/t
 import type { NavigationHelpers, ParamListBase, TabNavigationState } from '@react-navigation/native';
 import type { BottomTabNavigationEventMap } from '@react-navigation/bottom-tabs';
 import type { EdgeInsets } from 'react-native-safe-area-context';
+import { useRef } from 'react';
 
 interface Route {
     key: string;
@@ -50,6 +51,27 @@ const TabItem = ({
     testID
 }: TabItemProps) => {
     const color = isFocused ? focusedColor : unfocusedColor;
+    const scale = useRef(new Animated.Value(1)).current;
+
+    const animateScale = () => {
+        Animated.sequence([
+            Animated.spring(scale, {
+                toValue: 0.95,
+                useNativeDriver: true,
+                speed: 550
+            }),
+            Animated.spring(scale, {
+                toValue: 1,
+                useNativeDriver: true,
+                speed: 550
+            })
+        ]).start();
+    };
+
+    const handlePress = () => {
+        animateScale();
+        onPress();
+    };
 
     return (
         <PlatformPressable
@@ -57,9 +79,10 @@ const TabItem = ({
             accessibilityState={isFocused ? { selected: true } : {}}
             accessibilityLabel={accessibilityLabel}
             testID={testID}
-            onPress={onPress}
+            onPress={handlePress}
             onLongPress={onLongPress}
-            style={styles.button}
+            style={[styles.button, { transform: [{ scale }] }]}
+            pressOpacity={1}
         >
             <TabBarIcon
                 name={route.name as TabBarIconName}
