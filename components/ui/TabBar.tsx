@@ -11,6 +11,7 @@ import type { NavigationHelpers, ParamListBase, TabNavigationState } from '@reac
 import type { BottomTabNavigationEventMap } from '@react-navigation/bottom-tabs';
 import type { EdgeInsets } from 'react-native-safe-area-context';
 import { useRef } from 'react';
+import { ThemedText } from '../ThemedText';
 
 interface Route {
     key: string;
@@ -98,18 +99,18 @@ const TabItem = ({
 
 const TabBarBackground = ({ backgroundColor, bottomInset }: { backgroundColor: string; bottomInset: number }) => {
     const { height } = useTabBarHeight(12);
-    
+
     // Convert backgroundColor to rgba for transparency
     const transparentColor = backgroundColor + 'ee'
-    
+
     return (
         <LinearGradient
             colors={[transparentColor, backgroundColor]}
             style={[
-                styles.background, 
-                { 
+                styles.background,
+                {
                     height: height + bottomInset,
-                    bottom: 0 
+                    bottom: 0
                 }
             ]}
             locations={[0, 1]}
@@ -172,7 +173,59 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
                     );
                 })}
             </View>
+            <NewWorkoutButton bottom={bottomInset} height={height} />
         </>
+    );
+}
+
+const NewWorkoutButton = ({ bottom, height }: { bottom: number; height: number }) => {
+
+    const color = useThemeColor('textContrast');
+    const backgroundColor = useThemeColor('brand');
+    const scale = useRef(new Animated.Value(1)).current;
+
+    const handlePress = () => {
+        // Scale the button
+        animateScale();
+        // Haptic feedback
+        if (Platform.OS === 'ios') {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+    };
+
+    const animateScale = () => {
+        Animated.sequence([
+            Animated.spring(scale, {
+                toValue: 0.98,
+                useNativeDriver: true,
+                speed: 550
+            }),
+            Animated.spring(scale, {
+                toValue: 1,
+                useNativeDriver: true,
+                speed: 550
+            })
+        ]).start();
+    };
+
+    return (
+        <PlatformPressable
+            onPress={handlePress}
+            style={[styles.newWorkoutButton, {
+                transform: [{ scale }],
+                bottom: bottom + height + 15,
+                backgroundColor
+            }]}
+            pressOpacity={1}
+        >
+            <TabBarIcon
+                name={'plus'}
+                color={color}
+                size={26}
+                strokeWidth={1.8}
+            />
+            <ThemedText style={{ fontWeight: '500', color }}>Start Workout</ThemedText>
+        </PlatformPressable>
     );
 }
 
@@ -203,4 +256,18 @@ const styles = StyleSheet.create({
     buttonText: {
         fontSize: 10,
     },
+    newWorkoutButton: {
+        position: 'absolute',
+        boxShadow: '0 0 6px rgba(0, 0, 0, 0.6)',
+        right: 15,
+        borderRadius: 16,
+        height: 56,
+        paddingHorizontal: 18,
+        display: 'flex',
+        flexDirection: 'row',
+        gap: 10,
+        paddingLeft: 14,
+        justifyContent: 'center',
+        alignItems: 'center',
+    }
 });
