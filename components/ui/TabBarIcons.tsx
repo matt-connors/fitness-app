@@ -1,12 +1,13 @@
-import { Dumbbell, History, House, Library, Plus, SettingsIcon } from 'lucide-react-native';
+import { Archive, BookOpen, Calendar, Dumbbell, History, House, LayoutDashboard, Library, LibraryBig, Plus, SettingsIcon } from 'lucide-react-native';
 
 const MAPPING = {
-    index: House,
-    library: Library,
+    index: LayoutDashboard,
+    library: BookOpen,
     history: History,
     settings: SettingsIcon,
     dumbbell: Dumbbell,
     plus: Plus,
+    workouts: Calendar
 }
 
 export function TabBarIcon({ name, color, size, strokeWidth }: { name: TabBarIconName, color: string, size: number, strokeWidth?: number }) {

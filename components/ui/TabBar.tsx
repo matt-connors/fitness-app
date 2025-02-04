@@ -12,6 +12,7 @@ import type { BottomTabNavigationEventMap } from '@react-navigation/bottom-tabs'
 import type { EdgeInsets } from 'react-native-safe-area-context';
 import { useRef } from 'react';
 import { ThemedText } from '../ThemedText';
+import React from 'react';
 
 interface Route {
     key: string;
@@ -37,6 +38,13 @@ interface TabItemProps {
     label: string;
     accessibilityLabel?: string;
     testID?: string;
+}
+
+const LabelMapping = {
+    index: 'Home',
+    workouts: 'Workouts',
+    library: 'Library',
+    settings: 'Settings',
 }
 
 const TabItem = ({
@@ -89,9 +97,10 @@ const TabItem = ({
                 name={route.name as TabBarIconName}
                 color={color}
                 size={27}
+                strokeWidth={1.8}
             />
             <Text style={[styles.buttonText, { color }]}>
-                {label}
+                {LabelMapping[route.name as keyof typeof LabelMapping]}
             </Text>
         </PlatformPressable>
     );
@@ -221,10 +230,10 @@ const NewWorkoutButton = ({ bottom, height }: { bottom: number; height: number }
             <TabBarIcon
                 name={'plus'}
                 color={color}
-                size={26}
+                size={24}
                 strokeWidth={1.8}
             />
-            <ThemedText style={{ fontWeight: '500', color }}>Start Workout</ThemedText>
+            <ThemedText style={{ fontWeight: '500', fontSize: 15, color }}>Start Workout</ThemedText>
         </PlatformPressable>
     );
 }
@@ -260,8 +269,8 @@ const styles = StyleSheet.create({
         position: 'absolute',
         boxShadow: '0 0 6px rgba(0, 0, 0, 0.6)',
         right: 15,
-        borderRadius: 16,
-        height: 56,
+        borderRadius: 14,
+        height: 54,
         paddingHorizontal: 18,
         display: 'flex',
         flexDirection: 'row',
