@@ -6,6 +6,10 @@ import { Image } from 'expo-image';
 import { SPACING } from '@/constants/Spacing';
 import { ThemedText } from '../ThemedText';
 import { usePathname } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
+
+import React from 'react';
 
 const LabelMapping = {
     '/': 'Home',
@@ -17,22 +21,30 @@ const LabelMapping = {
 export function Header() {
     const insets = useSafeAreaInsets();
     const backgroundColor = useThemeColor('background');
-    const backgroundSubtleContrast = useThemeColor('backgroundSubtleContrast');
     const pathname = usePathname();
     const isDarkMode = useColorScheme() === 'dark';
 
-    const lightLogo = require('@/assets/images/logo-temp-light.png');
-    const darkLogo = require('@/assets/images/logo-temp-dark.svg');
-    
     const title = LabelMapping[pathname as keyof typeof LabelMapping] || 'Overview';
 
+    const transparentColor = backgroundColor + 'ee'
+
     return (
-        <View style={[styles.container, {
-            paddingTop: insets.top,
-            backgroundColor
-        }]}>
-            <View style={styles.content}>
-                {/* <PlatformPressable
+        <>
+            <View style={styles.container}>
+                <LinearGradient
+                    colors={[backgroundColor, transparentColor]}
+                    style={[
+                        styles.background,
+                        {
+                            height: SPACING.headerHeight + insets.top,
+                            bottom: 0
+                        }
+
+                    ]}
+                    locations={[0, 1]}
+                />
+                <View style={[styles.content, { marginTop: insets.top }]}>
+                    {/* <PlatformPressable
                     onPress={() => {
                         // Handle profile button press
                     }}
@@ -48,23 +60,36 @@ export function Header() {
                         contentFit="cover"
                     />
                 </PlatformPressable> */}
-                <ThemedText style={styles.title}>{title}</ThemedText>
-                {/* <Image
+                    <ThemedText style={styles.title}>{title}</ThemedText>
+                    {/* <Image
                     source={isDarkMode ? darkLogo : lightLogo}
                     style={styles.logo}
                     contentFit="contain"
                 /> */}
 
+                </View>
             </View>
-        </View>
+        </>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         width: '100%',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 100,
         // borderBottomWidth: StyleSheet.hairlineWidth,
         // borderBottomColor: 'rgba(140, 140, 140, 0.2)',
+
+    },
+    background: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
     },
     title: {
         fontSize: 26,
@@ -75,15 +100,13 @@ const styles = StyleSheet.create({
         height: 26,
         width: 150,
     },
-
     content: {
-        height: 54,
+        height: SPACING.headerHeight,
         paddingHorizontal: SPACING.pageHorizontal,
         flexDirection: 'row',
         alignItems: 'center',
         // justifyContent: 'space-between',
         gap: 10,
-
         // backgroundColor: 'red',
     },
     profileButton: {

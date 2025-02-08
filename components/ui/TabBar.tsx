@@ -13,7 +13,7 @@ import type { EdgeInsets } from 'react-native-safe-area-context';
 import { useRef } from 'react';
 import { ThemedText } from '../ThemedText';
 import React from 'react';
-
+import { SPACING } from '@/constants/Spacing';
 interface Route {
     key: string;
     name: string;
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
         boxShadow: '0 0 6px rgba(0, 0, 0, 0.6)',
         right: 15,
         borderRadius: 14,
-        height: 54,
+        height: SPACING.navHeight,
         paddingHorizontal: 18,
         display: 'flex',
         flexDirection: 'row',
