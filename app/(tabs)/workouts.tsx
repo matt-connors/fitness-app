@@ -2,7 +2,6 @@ import { Image, StyleSheet, Platform, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { PageContainer } from '@/components/PageContainer';
 import { ThemedSection } from '@/components/ThemedSection';
 import { Calendar, CalendarHeader } from '@/components/ui/Calendar';
 import { Section } from '@/components/Section';
@@ -13,22 +12,24 @@ import { SPACING } from '@/constants/Spacing';
 
 export default function WorkoutsScreen() {
     return (
-        <>
+        <ThemedView style={{ flex: 1 }}>
             <Header overrideTitle="February">
                 <View style={styles.calendarHeader}>
                     <CalendarHeader />
                 </View>
             </Header>
-            <PageContainer style={{ paddingInline: 1 }}>
-                {/* <Section> */}
-                    <Calendar />
-                {/* </Section> */}
-            </PageContainer>
-        </>
+            <View style={styles.container}>
+                <Calendar />
+            </View>
+        </ThemedView>
     );
 }
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        paddingTop: SPACING.headerHeight,
+    },
     calendarHeader: {
         paddingBottom: 4,
         // marginTop: 2,
