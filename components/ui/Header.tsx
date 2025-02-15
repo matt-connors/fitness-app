@@ -13,20 +13,24 @@ import React from 'react';
 
 const LabelMapping = {
     '/': 'Home',
-    '/workouts': 'Workouts',
+    // '/workouts': 'Workouts',
     '/library': 'Library',
     '/settings': 'Settings',
 }
 
-export function Header() {
+export function Header({ overrideTitle, children }: { overrideTitle?: string, children?: React.ReactNode }) {
     const insets = useSafeAreaInsets();
     const backgroundColor = useThemeColor('background');
     const pathname = usePathname();
     const isDarkMode = useColorScheme() === 'dark';
 
-    const title = LabelMapping[pathname as keyof typeof LabelMapping] || 'Overview';
+    const title = overrideTitle || LabelMapping[pathname as keyof typeof LabelMapping];
 
     const transparentColor = backgroundColor + 'ee'
+
+    if (!title) {
+        return null;
+    }
 
     return (
         <>
@@ -44,30 +48,31 @@ export function Header() {
                     locations={[0, 1]}
                 />
                 <View style={[styles.content, { marginTop: insets.top }]}>
-                    {/* <PlatformPressable
-                    onPress={() => {
-                        // Handle profile button press
-                    }}
-                    style={[styles.profileButton, {
-                        backgroundColor: backgroundSubtleContrast,
-                        // borderColor: borderColor,
-                    }]}
-                    pressOpacity={1}
-                >
-                    <Image
-                        source={require('@/assets/images/profile-picture.webp')}
-                        style={styles.profileImage}
-                        contentFit="cover"
-                    />
-                </PlatformPressable> */}
+
                     <ThemedText style={styles.title}>{title}</ThemedText>
+                    {/* <PlatformPressable
+                        onPress={() => {
+                            // Handle profile button press
+                        }}
+                        style={[styles.profileButton, {
+                            // backgroundColor: backgroundSubtleContrast,
+                            // borderColor: borderColor,
+                        }]}
+                        pressOpacity={1}
+                    >
+                        <Image
+                            source={require('@/assets/images/profile-picture.webp')}
+                            style={styles.profileImage}
+                            contentFit="cover"
+                        />
+                    </PlatformPressable> */}
                     {/* <Image
                     source={isDarkMode ? darkLogo : lightLogo}
                     style={styles.logo}
                     contentFit="contain"
                 /> */}
-
                 </View>
+                {children}
             </View>
         </>
     );
@@ -96,28 +101,29 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         lineHeight: 0
     },
-    logo: {
-        height: 26,
-        width: 150,
-    },
+    // logo: {
+    //     height: 26,
+    //     width: 150,
+    // },
     content: {
-        height: SPACING.headerHeight,
-        paddingHorizontal: SPACING.pageHorizontal,
-        flexDirection: 'row',
-        alignItems: 'center',
+        minHeight: SPACING.headerHeight,
+        paddingHorizontal: SPACING.pageHorizontal + SPACING.pageHorizontalInside,
+        // flexDirection: 'row',
+        paddingTop: 6,
+        // alignItems: 'center',
         // justifyContent: 'space-between',
-        gap: 10,
+        // gap: 10,
         // backgroundColor: 'red',
     },
-    profileButton: {
-        width: 32,
-        height: 32,
-        borderRadius: 24,
-        overflow: 'hidden',
-        // borderWidth: 1,
-    },
-    profileImage: {
-        width: '100%',
-        height: '100%',
-    },
+    // profileButton: {
+    //     width: 42,
+    //     height: 42,
+    //     borderRadius: 24,
+    //     overflow: 'hidden',
+    //     // borderWidth: 1,
+    // },
+    // profileImage: {
+    //     width: '100%',
+    //     height: '100%',
+    // },
 }); 

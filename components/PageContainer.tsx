@@ -5,7 +5,7 @@ import { SPACING } from "@/constants/Spacing";
 import Animated, { useAnimatedRef } from "react-native-reanimated";
 import { View } from "react-native";
 
-export function PageContainer({ children }: { children?: React.ReactNode }) {
+export function PageContainer({ children, style }: { children?: React.ReactNode, style?: any }) {
     const insets = useSafeAreaInsets();
     const scrollRef = useAnimatedRef<Animated.ScrollView>();
 
@@ -13,10 +13,13 @@ export function PageContainer({ children }: { children?: React.ReactNode }) {
         ref={scrollRef}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        style={{
-            paddingHorizontal: SPACING.pageHorizontal,
-            paddingTop: SPACING.headerHeight + insets.top,
-        }}
+        style={[
+            {
+                paddingHorizontal: SPACING.pageHorizontal,
+                paddingTop: SPACING.headerHeight + insets.top,
+            },
+            style
+        ]}
     >
         <ThemedView>
             {children}

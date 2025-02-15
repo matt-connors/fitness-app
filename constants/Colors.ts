@@ -19,6 +19,7 @@ export const Colors = {
         tabIconDefault: '#687076',
         tabIconSelected: tintColorLight,
         brand: '#3A84E8',
+        textMuted: '#929292',
 
         primary: 'rgb(10, 132, 255)',
         card: 'rgb(18, 18, 18)',
@@ -26,7 +27,7 @@ export const Colors = {
     },
     dark: {
         text: '#fff',
-        textSecondary: '#b3b3b3',
+        textSecondary: '#ddd',
         textContrast: '#111',
         background: '#151718',
         backgroundSubtleContrast: '#252728',
@@ -36,6 +37,7 @@ export const Colors = {
         tabIconDefault: '#9BA1A6',
         tabIconSelected: tintColorDark,
         brand: '#3A84E8',
+        textMuted: '#6D6D6D',
 
         primary: 'rgb(10, 132, 255)',
         card: 'rgb(18, 18, 18)',
