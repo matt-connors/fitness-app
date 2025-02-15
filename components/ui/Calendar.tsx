@@ -1,8 +1,10 @@
 import React, { useMemo, useState, useRef, useCallback } from "react";
-import { StyleSheet, View, useWindowDimensions, FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
+import { StyleSheet, View, useWindowDimensions, FlatList, Dimensions, NativeScrollEvent, NativeSyntheticEvent, Pressable } from "react-native";
 import { ThemedText } from "../ThemedText";
 import { useThemeColor } from "@/hooks/useThemeColor";
 import { SPACING } from "@/constants/Spacing";
+import { useNavigation, useIsFocused } from "@react-navigation/native";
+import { Calendar as CalendarIcon } from "lucide-react-native";
 
 interface CalendarDay {
     date: number;
@@ -24,6 +26,7 @@ interface MonthData {
 interface CalendarProps {
     selectedDate?: Date;
     onSelectDate?: (date: Date) => void;
+    onMonthChange?: (month: MonthData) => void;
 }
 
 const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -145,7 +148,7 @@ function MonthView({ data }: { data: MonthData }) {
     return (
         <View style={styles.monthContainer}>
             <ThemedText style={styles.monthText}>
-                {MONTHS[data.month]} {data.year}
+                {MONTHS[data.month].slice(0, 3)}
             </ThemedText>
             <View style={styles.grid}>
                 {data.days.map((day, index) => (
@@ -190,22 +193,57 @@ function CalendarCell({ day }: { day: CalendarDay }) {
     );
 }
 
-export function Calendar({ selectedDate = new Date() }: CalendarProps) {
+export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarProps) {
     const [months, setMonths] = useState(() => getInitialMonths(selectedDate));
+    const [showScrollToToday, setShowScrollToToday] = useState(false);
     const flatListRef = useRef<FlatList>(null);
     const isLoadingRef = useRef(false);
     const currentMonthIndex = useRef(3);
     const currentScrollOffset = useRef(0);
+    const initialScrollComplete = useRef(false);
+    const isFocused = useIsFocused();
+    const { height: screenHeight } = useWindowDimensions();
 
-    // Scroll to current month on mount
+    // Get theme colors at component level
+    const brandColor = useThemeColor('brand');
+    const textContrastColor = useThemeColor('textContrast');
+
+    // Calculate the offset to center the current month
+    const centerOffset = useCallback((index: number) => {
+        return (index * MONTH_HEIGHT) - ((screenHeight - MONTH_HEIGHT) / 2) + SPACING.headerHeight;
+    }, [screenHeight]);
+
+    // Initial scroll to center the current month
     React.useEffect(() => {
-        setTimeout(() => {
-            flatListRef.current?.scrollToIndex({
-                index: currentMonthIndex.current,
+        if (!initialScrollComplete.current) {
+            initialScrollComplete.current = true;
+            requestAnimationFrame(() => {
+                flatListRef.current?.scrollToOffset({
+                    offset: centerOffset(currentMonthIndex.current),
+                    animated: false
+                });
+            });
+        }
+    }, [centerOffset]);
+
+    const scrollToToday = useCallback(() => {
+        // First, reset the loading state to prevent any ongoing loads
+        isLoadingRef.current = false;
+        
+        // Reset to a fresh set of months centered on today
+        const newMonths = getInitialMonths(new Date());
+        setMonths(newMonths);
+        currentMonthIndex.current = 3; // Reset to center index
+        
+        // Use requestAnimationFrame to ensure the new months are rendered
+        requestAnimationFrame(() => {
+            flatListRef.current?.scrollToOffset({
+                offset: centerOffset(currentMonthIndex.current),
                 animated: true
             });
-        }, 100);
-    }, []);
+            setShowScrollToToday(false);
+        });
+    }, [centerOffset]);
 
     const loadMoreMonths = useCallback((direction: 'before' | 'after') => {
         if (isLoadingRef.current) return;
@@ -217,9 +255,11 @@ export function Calendar({ selectedDate = new Date() }: CalendarProps) {
                 ? new Date(currentMonths[0].year, currentMonths[0].month, 1)
                 : new Date(currentMonths[currentMonths.length - 1].year, currentMonths[currentMonths.length - 1].month, 1);
 
-            // Add 3 months in the requested direction
+            // Add months in the requested direction
             const monthsToAdd = [];
-            for (let i = 0; i < 3; i++) {
+            const monthsToAddCount = 3; // Always add 3 months in either direction
+            
+            for (let i = 0; i < monthsToAddCount; i++) {
                 if (direction === 'before') {
                     baseDate.setMonth(baseDate.getMonth() - 1);
                     monthsToAdd.unshift(getMonthData(baseDate));
@@ -230,14 +270,17 @@ export function Calendar({ selectedDate = new Date() }: CalendarProps) {
             }
 
             if (direction === 'before') {
-                // Calculate the offset to maintain scroll position
-                const additionalOffset = MONTH_HEIGHT * monthsToAdd.length;
+                currentMonthIndex.current += monthsToAdd.length;
+                
+                // Maintain scroll position after adding months
                 requestAnimationFrame(() => {
+                    const newOffset = currentScrollOffset.current + (MONTH_HEIGHT * monthsToAdd.length);
                     flatListRef.current?.scrollToOffset({
-                        offset: currentScrollOffset.current + additionalOffset,
+                        offset: newOffset,
                         animated: false
                     });
                 });
+                
                 return [...monthsToAdd, ...newMonths];
             } else {
                 return [...newMonths, ...monthsToAdd];
@@ -246,7 +289,7 @@ export function Calendar({ selectedDate = new Date() }: CalendarProps) {
 
         setTimeout(() => {
             isLoadingRef.current = false;
-        }, 100);
+        }, 150); // Consistent timeout for both directions
     }, []);
 
     const getItemLayout = useCallback((data: any, index: number) => ({
@@ -257,18 +300,42 @@ export function Calendar({ selectedDate = new Date() }: CalendarProps) {
 
     const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
         const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+        const velocity = event.nativeEvent.velocity?.y ?? 0;
         currentScrollOffset.current = contentOffset.y;
         
-        // Check if we're near the top (within 2 month heights)
-        if (contentOffset.y < MONTH_HEIGHT * 2) {
+        // Calculate current visible month
+        const currentVisibleIndex = Math.round(contentOffset.y / MONTH_HEIGHT);
+        const visibleMonthCount = Math.ceil(layoutMeasurement.height / MONTH_HEIGHT);
+        const visibleMonths = Array.from(
+            { length: visibleMonthCount },
+            (_, i) => currentVisibleIndex + i
+        );
+        
+        // Show button if current month index is not in view
+        const isCurrentMonthVisible = visibleMonths.includes(currentMonthIndex.current);
+        setShowScrollToToday(!isCurrentMonthVisible);
+
+        // Notify parent of month change if callback exists
+        if (onMonthChange && months[currentVisibleIndex]) {
+            onMonthChange(months[currentVisibleIndex]);
+        }
+        
+        // Calculate loading thresholds
+        const baseThreshold = MONTH_HEIGHT * 2;
+        const velocityFactor = Math.abs(velocity) > 0.5 ? 1 : 0.5; // Require more momentum for loading
+        const loadingThreshold = baseThreshold * velocityFactor;
+        
+        // Only load if we have some momentum or are very close to the edge
+        const shouldLoadMore = Math.abs(velocity) > 0.5 || contentOffset.y < MONTH_HEIGHT;
+        
+        if (contentOffset.y < loadingThreshold && shouldLoadMore) {
             loadMoreMonths('before');
         }
         
-        // Check if we're near the bottom (within 2 month heights)
-        if (contentSize.height - (contentOffset.y + layoutMeasurement.height) < MONTH_HEIGHT * 2) {
+        if (contentSize.height - (contentOffset.y + layoutMeasurement.height) < baseThreshold) {
             loadMoreMonths('after');
         }
-    }, [loadMoreMonths]);
+    }, [loadMoreMonths, months, onMonthChange]);
 
     const handleScrollToIndexFailed = useCallback((info: {
         index: number;
@@ -291,30 +358,47 @@ export function Calendar({ selectedDate = new Date() }: CalendarProps) {
     }, []);
 
     return (
-        <FlatList
-            ref={flatListRef}
-            data={months}
-            renderItem={({ item }) => <MonthView data={item} />}
-            keyExtractor={(item) => item.id}
-            showsVerticalScrollIndicator={false}
-            getItemLayout={getItemLayout}
-            initialScrollIndex={currentMonthIndex.current}
-            onScrollToIndexFailed={handleScrollToIndexFailed}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            windowSize={5}
-            maxToRenderPerBatch={3}
-            initialNumToRender={7}
-            removeClippedSubviews={true}
-            style={styles.list}
-            contentContainerStyle={styles.listContent}
-        />
+        <View style={styles.container}>
+            <FlatList
+                ref={flatListRef}
+                data={months}
+                renderItem={({ item }) => <MonthView data={item} />}
+                keyExtractor={(item) => item.id}
+                showsVerticalScrollIndicator={false}
+                getItemLayout={getItemLayout}
+                initialScrollIndex={currentMonthIndex.current}
+                onScrollToIndexFailed={handleScrollToIndexFailed}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                windowSize={5}
+                maxToRenderPerBatch={3}
+                initialNumToRender={7}
+                removeClippedSubviews={true}
+                style={styles.list}
+                contentContainerStyle={styles.listContent}
+            />
+            {showScrollToToday && (
+                <Pressable 
+                    onPress={scrollToToday}
+                    style={[
+                        styles.scrollToTodayButton,
+                        { backgroundColor: brandColor }
+                    ]}
+                >
+                    <CalendarIcon color={textContrastColor} size={20} />
+                    <ThemedText style={[styles.scrollToTodayText, { color: textContrastColor }]}>
+                        Today
+                    </ThemedText>
+                </Pressable>
+            )}
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
     list: {
         flex: 1,
+        width: '100%',
     },
     listContent: {
         paddingHorizontal: SPACING.pageHorizontal,
@@ -322,10 +406,12 @@ const styles = StyleSheet.create({
     monthContainer: {
         width: '100%',
         height: MONTH_HEIGHT,
-        marginBottom: 0, // Remove any margin to prevent overlapping
+        marginBottom: 0,
     },
     container: {
+        flex: 1,
         width: '100%',
+        height: '100%',
     },
     monthText: {
         fontSize: 16,
@@ -385,6 +471,30 @@ const styles = StyleSheet.create({
         fontSize: 10,
         fontWeight: '500',
         lineHeight: 0,
+    },
+    scrollToTodayButton: {
+        position: 'absolute',
+        bottom: 200,
+        right: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+        zIndex: 1000,
+    },
+    scrollToTodayText: {
+        fontSize: 15,
+        fontWeight: '500',
     }
 });
 
