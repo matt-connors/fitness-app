@@ -8,6 +8,7 @@ import { ThemedText } from '../ThemedText';
 import { usePathname } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { CalendarFold, Calendar as CalendarIcon } from "lucide-react-native";
 
 import React from 'react';
 
@@ -18,11 +19,17 @@ const LabelMapping = {
     '/settings': 'Settings',
 }
 
-export function Header({ overrideTitle, children }: { overrideTitle?: string, children?: React.ReactNode }) {
+export function Header({ overrideTitle, children, onScrollToToday }: { 
+    overrideTitle?: string, 
+    children?: React.ReactNode,
+    onScrollToToday?: () => void 
+}) {
     const insets = useSafeAreaInsets();
     const backgroundColor = useThemeColor('background');
     const pathname = usePathname();
     const isDarkMode = useColorScheme() === 'dark';
+    const brandColor = useThemeColor('brand');
+    const textColor = useThemeColor('text');
 
     const title = overrideTitle || LabelMapping[pathname as keyof typeof LabelMapping];
 
@@ -48,8 +55,18 @@ export function Header({ overrideTitle, children }: { overrideTitle?: string, ch
                     locations={[0, 1]}
                 />
                 <View style={[styles.content, { marginTop: insets.top }]}>
-
-                    <ThemedText style={styles.title}>{title}</ThemedText>
+                    <View style={styles.titleContainer}>
+                        <ThemedText style={styles.title}>{title}</ThemedText>
+                        {onScrollToToday && (
+                            <PlatformPressable
+                                onPress={onScrollToToday}
+                                style={styles.todayButton}
+                                pressOpacity={0.7}
+                            >
+                                <CalendarFold color={textColor} size={22} />
+                            </PlatformPressable>
+                        )}
+                    </View>
                     {/* <PlatformPressable
                         onPress={() => {
                             // Handle profile button press
@@ -96,6 +113,11 @@ const styles = StyleSheet.create({
         right: 0,
         bottom: 0,
     },
+    titleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
     title: {
         fontSize: 26,
         fontWeight: '500',
@@ -114,6 +136,23 @@ const styles = StyleSheet.create({
         // justifyContent: 'space-between',
         // gap: 10,
         // backgroundColor: 'red',
+    },
+    todayButton: {
+        // width: 38,
+        // height: 38,
+        // borderRadius: 19,
+        padding: 4,
+        paddingRight: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+        // shadowColor: "red",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
     },
     // profileButton: {
     //     width: 42,

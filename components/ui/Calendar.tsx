@@ -210,7 +210,7 @@ function CalendarCell({ day }: { day: CalendarDay }) {
     );
 }
 
-export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarProps) {
+export const Calendar = React.forwardRef<{ scrollToToday: () => void }, CalendarProps>(({ selectedDate = new Date(), onMonthChange }, ref) => {
     const [months, setMonths] = useState(() => getInitialMonths(selectedDate));
     const [showScrollToToday, setShowScrollToToday] = useState(false);
     const flatListRef = useRef<FlatList>(null);
@@ -272,9 +272,13 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
             if (onMonthChange) {
                 onMonthChange(newMonths[currentMonthIndex.current]);
             }
-            setShowScrollToToday(false);
         });
     }, [centerOffset, onMonthChange]);
+
+    // Expose scrollToToday method through ref
+    React.useImperativeHandle(ref, () => ({
+        scrollToToday
+    }));
 
     const loadMoreMonths = useCallback((direction: 'before' | 'after') => {
         if (isLoadingRef.current) return;
@@ -429,23 +433,9 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
                 overScrollMode="always"
                 decelerationRate="normal"
             />
-            {showScrollToToday && (
-                <Pressable 
-                    onPress={scrollToToday}
-                    style={[
-                        styles.scrollToTodayButton,
-                        { backgroundColor: brandColor }
-                    ]}
-                >
-                    <CalendarIcon color={textContrastColor} size={20} />
-                    <ThemedText style={[styles.scrollToTodayText, { color: textContrastColor }]}>
-                        Today
-                    </ThemedText>
-                </Pressable>
-            )}
         </View>
     );
-}
+});
 
 const styles = StyleSheet.create({
     list: {

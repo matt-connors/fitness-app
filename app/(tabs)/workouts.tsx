@@ -7,7 +7,7 @@ import { Calendar, CalendarHeader } from '@/components/ui/Calendar';
 import { Section } from '@/components/Section';
 import { Header } from '@/components/ui/Header';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import { SPACING } from '@/constants/Spacing';
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -17,6 +17,7 @@ export default function WorkoutsScreen() {
         const now = new Date();
         return MONTHS[now.getMonth()];
     });
+    const calendarRef = useRef<{ scrollToToday: () => void }>(null);
 
     const handleMonthChange = useCallback((monthData: { month: number; year: number }) => {
         const currentYear = new Date().getFullYear();
@@ -29,13 +30,19 @@ export default function WorkoutsScreen() {
 
     return (
         <ThemedView style={styles.screen}>
-            <Header overrideTitle={currentMonth}>
+            <Header 
+                overrideTitle={currentMonth}
+                onScrollToToday={() => calendarRef.current?.scrollToToday()}
+            >
                 <View style={styles.calendarHeader}>
                     <CalendarHeader />
                 </View>
             </Header>
             <View style={styles.container}>
-                <Calendar onMonthChange={handleMonthChange} />
+                <Calendar 
+                    ref={calendarRef}
+                    onMonthChange={handleMonthChange} 
+                />
             </View>
         </ThemedView>
     );
