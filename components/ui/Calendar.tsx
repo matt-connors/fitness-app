@@ -218,8 +218,9 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
         if (!initialScrollComplete.current) {
             initialScrollComplete.current = true;
             requestAnimationFrame(() => {
+                const offset = centerOffset(currentMonthIndex.current) + MONTH_HEIGHT;
                 flatListRef.current?.scrollToOffset({
-                    offset: centerOffset(currentMonthIndex.current),
+                    offset,
                     animated: false
                 });
             });
@@ -237,13 +238,19 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
         
         // Use requestAnimationFrame to ensure the new months are rendered
         requestAnimationFrame(() => {
+            const offset = centerOffset(currentMonthIndex.current) + MONTH_HEIGHT;
             flatListRef.current?.scrollToOffset({
-                offset: centerOffset(currentMonthIndex.current),
+                offset,
                 animated: true
             });
+            
+            // Ensure the month title is updated immediately
+            if (onMonthChange) {
+                onMonthChange(newMonths[currentMonthIndex.current]);
+            }
             setShowScrollToToday(false);
         });
-    }, [centerOffset]);
+    }, [centerOffset, onMonthChange]);
 
     const loadMoreMonths = useCallback((direction: 'before' | 'after') => {
         if (isLoadingRef.current) return;
@@ -304,7 +311,7 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
         currentScrollOffset.current = contentOffset.y;
         
         // Calculate current visible month
-        const currentVisibleIndex = Math.round(contentOffset.y / MONTH_HEIGHT);
+        const currentVisibleIndex = Math.floor(contentOffset.y / MONTH_HEIGHT);
         const visibleMonthCount = Math.ceil(layoutMeasurement.height / MONTH_HEIGHT);
         const visibleMonths = Array.from(
             { length: visibleMonthCount },
@@ -317,12 +324,14 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
 
         // Notify parent of month change if callback exists
         if (onMonthChange && months[currentVisibleIndex]) {
-            onMonthChange(months[currentVisibleIndex]);
+            // Ensure we're showing the correct month for the visible content
+            const visibleMonth = months[currentVisibleIndex];
+            onMonthChange(visibleMonth);
         }
         
         // Calculate loading thresholds
         const baseThreshold = MONTH_HEIGHT * 2;
-        const velocityFactor = Math.abs(velocity) > 0.5 ? 1 : 0.5; // Require more momentum for loading
+        const velocityFactor = Math.abs(velocity) > 0.5 ? 1 : 0.5;
         const loadingThreshold = baseThreshold * velocityFactor;
         
         // Only load if we have some momentum or are very close to the edge
@@ -375,7 +384,18 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
                 initialNumToRender={7}
                 removeClippedSubviews={true}
                 style={styles.list}
-                contentContainerStyle={styles.listContent}
+                contentContainerStyle={[
+                    styles.listContent,
+                    { paddingTop: MONTH_HEIGHT } // Add padding to allow bounce effect
+                ]}
+                bounces={true}
+                alwaysBounceVertical={true}
+                maintainVisibleContentPosition={{
+                    minIndexForVisible: 0,
+                    autoscrollToTopThreshold: 10
+                }}
+                overScrollMode="always"
+                decelerationRate="normal"
             />
             {showScrollToToday && (
                 <Pressable 
