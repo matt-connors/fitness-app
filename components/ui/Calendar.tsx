@@ -21,6 +21,7 @@ interface MonthData {
     year: number;
     days: CalendarDay[];
     id: string;
+    height: number;
 }
 
 interface CalendarProps {
@@ -37,7 +38,9 @@ const CELL_ASPECT_RATIO = 1.5;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CELL_WIDTH = (SCREEN_WIDTH - (SPACING.pageHorizontal * 2) - (SPACING.pageHorizontalInside * 2)) / 7;
 const CELL_HEIGHT = CELL_WIDTH * CELL_ASPECT_RATIO;
-const MONTH_HEIGHT = (CELL_HEIGHT * 6) + 40; // 6 rows of days + header + padding
+const MONTH_PADDING = 40; // Padding for month header and spacing
+const MONTH_SPACING = 40; // Vertical spacing between months
+const BASE_MONTH_HEIGHT = (CELL_HEIGHT * 6) + MONTH_PADDING + MONTH_SPACING; // Maximum possible height
 
 function createDate(year: number, month: number, day: number = 1): Date {
     const date = new Date(year, month, day);
@@ -99,12 +102,23 @@ function getCalendarDays(year: number, month: number): CalendarDay[] {
     return days;
 }
 
+function getMonthHeight(year: number, month: number): number {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const totalDays = firstDay + daysInMonth;
+    const rows = Math.ceil(totalDays / 7);
+    return (CELL_HEIGHT * rows) + MONTH_PADDING + MONTH_SPACING;
+}
+
 function getMonthData(date: Date): MonthData {
+    const month = date.getMonth();
+    const year = date.getFullYear();
     return {
-        month: date.getMonth(),
-        year: date.getFullYear(),
-        days: getCalendarDays(date.getFullYear(), date.getMonth()),
-        id: `${date.getFullYear()}-${date.getMonth()}`
+        month,
+        year,
+        days: getCalendarDays(year, month),
+        id: `${year}-${month}`,
+        height: getMonthHeight(year, month)
     };
 }
 
@@ -146,7 +160,7 @@ export function CalendarHeader() {
 
 function MonthView({ data }: { data: MonthData }) {
     return (
-        <View style={styles.monthContainer}>
+        <View style={[styles.monthContainer, { height: data.height }]}>
             <ThemedText style={styles.monthText}>
                 {MONTHS[data.month].slice(0, 3)}
             </ThemedText>
@@ -169,7 +183,7 @@ function CalendarCell({ day }: { day: CalendarDay }) {
         <View style={[styles.cell, {
             borderTopWidth: day.isCurrentMonth ? StyleSheet.hairlineWidth : 0,
         }]}>
-            {day.isCurrentMonth ? (
+            {day.isCurrentMonth && (
                 <View style={[
                     styles.cellContent,
                 ]}>
@@ -186,9 +200,12 @@ function CalendarCell({ day }: { day: CalendarDay }) {
                         {day.date}
                     </ThemedText>
                 </View>
-            ) : (
-                <View style={styles.cellContent}></View>
             )}
+            {/* {!day.isCurrentMonth  && (
+                <View style={styles.cellContent}>
+                    <ThemedText>{day.date}</ThemedText>
+                </View>
+            )} */}
         </View>
     );
 }
@@ -208,17 +225,24 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
     const brandColor = useThemeColor('brand');
     const textContrastColor = useThemeColor('textContrast');
 
-    // Calculate the offset to center the current month
+    // Calculate cumulative height up to a specific index
+    const getCumulativeOffset = useCallback((index: number) => {
+        return months.slice(0, index).reduce((sum, month) => sum + month.height, 0);
+    }, [months]);
+
+    // Update centerOffset to use cumulative heights
     const centerOffset = useCallback((index: number) => {
-        return (index * MONTH_HEIGHT) - ((screenHeight - MONTH_HEIGHT) / 2) + SPACING.headerHeight;
-    }, [screenHeight]);
+        const cumulativeHeight = getCumulativeOffset(index);
+        const currentMonthHeight = months[index]?.height || BASE_MONTH_HEIGHT;
+        return cumulativeHeight - ((screenHeight - currentMonthHeight) / 2) + SPACING.headerHeight;
+    }, [screenHeight, months, getCumulativeOffset]);
 
     // Initial scroll to center the current month
     React.useEffect(() => {
         if (!initialScrollComplete.current) {
             initialScrollComplete.current = true;
             requestAnimationFrame(() => {
-                const offset = centerOffset(currentMonthIndex.current) + MONTH_HEIGHT;
+                const offset = centerOffset(currentMonthIndex.current) + BASE_MONTH_HEIGHT;
                 flatListRef.current?.scrollToOffset({
                     offset,
                     animated: false
@@ -238,7 +262,7 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
         
         // Use requestAnimationFrame to ensure the new months are rendered
         requestAnimationFrame(() => {
-            const offset = centerOffset(currentMonthIndex.current) + MONTH_HEIGHT;
+            const offset = centerOffset(currentMonthIndex.current) + BASE_MONTH_HEIGHT;
             flatListRef.current?.scrollToOffset({
                 offset,
                 animated: true
@@ -281,7 +305,7 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
                 
                 // Maintain scroll position after adding months
                 requestAnimationFrame(() => {
-                    const newOffset = currentScrollOffset.current + (MONTH_HEIGHT * monthsToAdd.length);
+                    const newOffset = currentScrollOffset.current + (BASE_MONTH_HEIGHT * monthsToAdd.length);
                     flatListRef.current?.scrollToOffset({
                         offset: newOffset,
                         animated: false
@@ -300,19 +324,29 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
     }, []);
 
     const getItemLayout = useCallback((data: any, index: number) => ({
-        length: MONTH_HEIGHT,
-        offset: MONTH_HEIGHT * index,
+        length: data[index]?.height || BASE_MONTH_HEIGHT,
+        offset: getCumulativeOffset(index),
         index,
-    }), []);
+    }), [getCumulativeOffset]);
 
     const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
         const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
         const velocity = event.nativeEvent.velocity?.y ?? 0;
         currentScrollOffset.current = contentOffset.y;
         
-        // Calculate current visible month
-        const currentVisibleIndex = Math.floor(contentOffset.y / MONTH_HEIGHT);
-        const visibleMonthCount = Math.ceil(layoutMeasurement.height / MONTH_HEIGHT);
+        // Find the current visible month based on cumulative heights
+        let currentVisibleIndex = 0;
+        let cumulativeHeight = 0;
+        
+        for (let i = 0; i < months.length; i++) {
+            if (cumulativeHeight > contentOffset.y) {
+                break;
+            }
+            currentVisibleIndex = i;
+            cumulativeHeight += months[i].height;
+        }
+
+        const visibleMonthCount = Math.ceil(layoutMeasurement.height / BASE_MONTH_HEIGHT);
         const visibleMonths = Array.from(
             { length: visibleMonthCount },
             (_, i) => currentVisibleIndex + i
@@ -324,18 +358,16 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
 
         // Notify parent of month change if callback exists
         if (onMonthChange && months[currentVisibleIndex]) {
-            // Ensure we're showing the correct month for the visible content
             const visibleMonth = months[currentVisibleIndex];
             onMonthChange(visibleMonth);
         }
         
         // Calculate loading thresholds
-        const baseThreshold = MONTH_HEIGHT * 2;
+        const baseThreshold = BASE_MONTH_HEIGHT * 2;
         const velocityFactor = Math.abs(velocity) > 0.5 ? 1 : 0.5;
         const loadingThreshold = baseThreshold * velocityFactor;
         
-        // Only load if we have some momentum or are very close to the edge
-        const shouldLoadMore = Math.abs(velocity) > 0.5 || contentOffset.y < MONTH_HEIGHT;
+        const shouldLoadMore = Math.abs(velocity) > 0.5 || contentOffset.y < BASE_MONTH_HEIGHT;
         
         if (contentOffset.y < loadingThreshold && shouldLoadMore) {
             loadMoreMonths('before');
@@ -386,7 +418,7 @@ export function Calendar({ selectedDate = new Date(), onMonthChange }: CalendarP
                 style={styles.list}
                 contentContainerStyle={[
                     styles.listContent,
-                    { paddingTop: MONTH_HEIGHT } // Add padding to allow bounce effect
+                    { paddingTop: BASE_MONTH_HEIGHT } // Add padding to allow bounce effect
                 ]}
                 bounces={true}
                 alwaysBounceVertical={true}
@@ -425,8 +457,7 @@ const styles = StyleSheet.create({
     },
     monthContainer: {
         width: '100%',
-        height: MONTH_HEIGHT,
-        marginBottom: 0,
+        // height is now set dynamically
     },
     container: {
         flex: 1,
