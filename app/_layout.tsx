@@ -8,6 +8,8 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
+import { ActiveWorkoutProvider } from '@/components/ActiveWorkoutProvider';
+
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
@@ -36,11 +38,13 @@ export default function RootLayout() {
 
     return (
         <ThemeProvider value={theme}>
-            <Stack>
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="+not-found" />
-            </Stack>
-            <StatusBar style="auto" />
+            <ActiveWorkoutProvider>
+                <Stack>
+                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                    <Stack.Screen name="create-workout" options={{ headerShown: false }} />
+                </Stack>
+                <StatusBar style="auto" />
+            </ActiveWorkoutProvider>
         </ThemeProvider>
     );
 }

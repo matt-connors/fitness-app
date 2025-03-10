@@ -1,4 +1,4 @@
-import { View, StyleSheet, useColorScheme } from 'react-native';
+import { View, StyleSheet, useColorScheme, LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { PlatformPressable } from '@react-navigation/elements';
 import { useThemeColor } from '@/hooks/useThemeColor';
@@ -25,15 +25,19 @@ export function Header({ overrideTitle, children, onScrollToToday }: {
     onScrollToToday?: () => void 
 }) {
     const insets = useSafeAreaInsets();
-    const backgroundColor = useThemeColor('background');
+    const backgroundColor = useThemeColor('backgroundSubtleContrast');
     const pathname = usePathname();
     const isDarkMode = useColorScheme() === 'dark';
     const brandColor = useThemeColor('brand');
     const textColor = useThemeColor('text');
+    const [headerHeight, setHeaderHeight] = React.useState(SPACING.headerHeight + insets.top);
 
     const title = overrideTitle || LabelMapping[pathname as keyof typeof LabelMapping];
+    const transparentColor = backgroundColor + 'aa';
 
-    const transparentColor = backgroundColor + 'ee'
+    const handleLayout = (event: LayoutChangeEvent) => {
+        setHeaderHeight(event.nativeEvent.layout.height);
+    };
 
     if (!title) {
         return null;
@@ -41,16 +45,23 @@ export function Header({ overrideTitle, children, onScrollToToday }: {
 
     return (
         <>
-            <View style={styles.container}>
+            <View style={styles.container} onLayout={handleLayout}>
+                <BlurView 
+                    intensity={45}
+                    style={[
+                        styles.background,
+                        {
+                            height: headerHeight,
+                        }
+                    ]}
+                />
                 <LinearGradient
                     colors={[backgroundColor, transparentColor]}
                     style={[
                         styles.background,
                         {
-                            height: SPACING.headerHeight + insets.top,
-                            bottom: 0
+                            height: headerHeight,
                         }
-
                     ]}
                     locations={[0, 1]}
                 />
@@ -63,7 +74,7 @@ export function Header({ overrideTitle, children, onScrollToToday }: {
                                 style={styles.todayButton}
                                 pressOpacity={0.7}
                             >
-                                <CalendarFold color={textColor} size={22} />
+                                <CalendarFold color={textColor} size={24} strokeWidth={1.7} />
                             </PlatformPressable>
                         )}
                     </View>

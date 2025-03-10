@@ -149,6 +149,7 @@ export function CalendarHeader() {
                 ]}>
                     <ThemedText style={[
                         styles.headerText,
+                        // { color: textSecondary }
                     ]}>
                         {day}
                     </ThemedText>
@@ -472,7 +473,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     headerText: {
-        fontSize: 13,
+        fontSize: 11,
         fontWeight: '500',
     },
     grid: {
@@ -500,7 +501,7 @@ const styles = StyleSheet.create({
     },
     workoutBadge: {
         width: '100%',
-        paddingBlock: 2,
+        paddingBlock: 3,
         paddingHorizontal: 4,
         borderRadius: 4,
         position: 'absolute',

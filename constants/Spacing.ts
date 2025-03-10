@@ -3,5 +3,5 @@ export const SPACING = {
     pageHorizontalInside: 8,
     pageVertical: 22,
     headerHeight: 54,
-    navHeight: 54
+    navHeight: 50
 }

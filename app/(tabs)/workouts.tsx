@@ -1,14 +1,17 @@
-import { Image, StyleSheet, Platform, Text, View } from 'react-native';
-
+import { StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { ThemedSection } from '@/components/ThemedSection';
 import { Calendar, CalendarHeader } from '@/components/ui/Calendar';
-import { Section } from '@/components/Section';
-import { Header } from '@/components/ui/Header';
-
 import React, { useState, useCallback, useRef } from 'react';
 import { SPACING } from '@/constants/Spacing';
+import { PlatformPressable } from '@react-navigation/elements';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { StandardHeader } from '@/components/ui/StandardHeader';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// Standard header measurements
+const HEADER_HEIGHT = 60; // Main header row height
+const HEADER_CONTENT_HEIGHT = 30; // Estimated height of calendar day headers
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
@@ -18,6 +21,8 @@ export default function WorkoutsScreen() {
         return MONTHS[now.getMonth()];
     });
     const calendarRef = useRef<{ scrollToToday: () => void }>(null);
+    const accentColor = useThemeColor('brand');
+    const insets = useSafeAreaInsets();
 
     const handleMonthChange = useCallback((monthData: { month: number; year: number }) => {
         const currentYear = new Date().getFullYear();
@@ -28,17 +33,40 @@ export default function WorkoutsScreen() {
         );
     }, []);
 
+    const handleScrollToToday = () => {
+        calendarRef.current?.scrollToToday();
+    };
+
+    // Prepare the Today button for the header
+    const todayButton = (
+        <PlatformPressable 
+            style={[styles.todayButton, { backgroundColor: accentColor }]} 
+            onPress={handleScrollToToday}
+        >
+            <ThemedText style={styles.todayButtonText}>Today</ThemedText>
+        </PlatformPressable>
+    );
+
+    // Prepare the calendar header as additional content
+    const calendarHeaderContent = (
+        <View style={styles.calendarHeader}>
+            <CalendarHeader />
+        </View>
+    );
+
+    // Calculate the top padding needed for the calendar based on our header height
+    const calendarTopPadding = insets.top + HEADER_HEIGHT + HEADER_CONTENT_HEIGHT;
+
     return (
         <ThemedView style={styles.screen}>
-            <Header 
-                overrideTitle={currentMonth}
-                onScrollToToday={() => calendarRef.current?.scrollToToday()}
-            >
-                <View style={styles.calendarHeader}>
-                    <CalendarHeader />
-                </View>
-            </Header>
-            <View style={styles.container}>
+            <StandardHeader 
+                title={currentMonth}
+                rightContent={todayButton}
+                additionalContent={calendarHeaderContent}
+            />
+            
+            {/* Use a View with padding instead of PageContainer to avoid nested ScrollViews */}
+            <View style={[styles.container, { paddingTop: calendarTopPadding }]}>
                 <Calendar 
                     ref={calendarRef}
                     onMonthChange={handleMonthChange} 
@@ -54,13 +82,19 @@ const styles = StyleSheet.create({
     },
     container: {
         flex: 1,
-        marginTop: SPACING.headerHeight + 30, // Add extra space for the calendar header
+        paddingHorizontal: SPACING.pageHorizontal,
+    },
+    todayButton: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 16,
+    },
+    todayButtonText: {
+        color: '#fff',
+        fontWeight: '600',
+        fontSize: 14,
     },
     calendarHeader: {
-        paddingBottom: 4,
-        // marginTop: 2,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: 'rgba(140, 140, 140, 0.2)',
-        paddingHorizontal: SPACING.pageHorizontal + SPACING.pageHorizontalInside,
+        paddingHorizontal: SPACING.pageHorizontalInside,
     }
 });

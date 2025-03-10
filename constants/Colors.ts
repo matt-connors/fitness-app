@@ -30,7 +30,7 @@ export const Colors = {
         textSecondary: '#ddd',
         textContrast: '#111',
         background: '#151718',
-        backgroundSubtleContrast: '#252728',
+        backgroundSubtleContrast: '#1E2122',
         border: '#252728',
         tint: tintColorDark,
         icon: '#9BA1A6',

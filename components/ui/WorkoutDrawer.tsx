@@ -1,0 +1,502 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View,
+  StyleSheet,
+  TextInput,
+  Animated,
+  TouchableWithoutFeedback,
+  Keyboard,
+  Dimensions,
+  ScrollView,
+  Pressable,
+  useColorScheme,
+  PanResponder,
+  Easing,
+  Alert
+} from 'react-native';
+import { BlurView } from 'expo-blur';
+import { ThemedText } from '../ThemedText';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemeColor } from '@/hooks/useThemeColor';
+import { SPACING } from '@/constants/Spacing';
+import { PlatformPressable } from '@react-navigation/elements';
+import { PlusCircle, Search, Clock, Dumbbell, X, Play } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+
+// Mock data for routines
+const LIBRARY_ROUTINES = [
+  { id: 'lib1', name: 'Full Body Strength', type: 'Strength', duration: '45 min' },
+  { id: 'lib2', name: 'Upper/Lower Split', type: 'Strength', duration: '60 min' },
+  { id: 'lib3', name: 'HIIT Cardio', type: 'Cardio', duration: '30 min' },
+  { id: 'lib4', name: 'Push/Pull/Legs', type: 'Strength', duration: '75 min' },
+  { id: 'lib5', name: 'Core Focus', type: 'Core', duration: '20 min' },
+  { id: 'lib6', name: 'Mobility & Flexibility', type: 'Mobility', duration: '40 min' },
+];
+
+const RECENT_ROUTINES = [
+  { id: 'rec1', name: 'Morning Push Routine', date: '2 days ago', duration: '52 min' },
+  { id: 'rec2', name: 'Leg Day', date: '4 days ago', duration: '65 min' },
+  { id: 'rec3', name: 'Quick HIIT Session', date: '1 week ago', duration: '22 min' },
+];
+
+interface WorkoutDrawerProps {
+  isVisible: boolean;
+  onClose: () => void;
+  onSelectRoutine: (routine: any) => void;
+  onStartEmptyWorkout: () => void;
+  hasActiveWorkout?: boolean;
+}
+
+export function WorkoutDrawer({ 
+  isVisible, 
+  onClose, 
+  onSelectRoutine, 
+  onStartEmptyWorkout,
+  hasActiveWorkout = false
+}: WorkoutDrawerProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filteredLibrary, setFilteredLibrary] = useState(LIBRARY_ROUTINES);
+  const [filteredRecent, setFilteredRecent] = useState(RECENT_ROUTINES);
+  const [isAnimatingOut, setIsAnimatingOut] = useState(false);
+  const drawerAnim = useRef(new Animated.Value(0)).current;
+  const drawerTranslateY = useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
+  const isDark = useColorScheme() === 'dark';
+  const router = useRouter();
+  
+  // Theme colors
+  const backgroundColor = useThemeColor('background');
+  const textColor = useThemeColor('text');
+  const placeholderColor = useThemeColor('textSecondary');
+  const borderColor = useThemeColor('border');
+  const accentColor = useThemeColor('brand');
+  const cardBgColor = useThemeColor('backgroundSubtleContrast');
+  
+  const screenHeight = Dimensions.get('window').height;
+  const DRAWER_HEIGHT = screenHeight * 0.9;
+  const CLOSE_THRESHOLD = 100;
+
+  // Check if there's an active workout
+  const handleStartEmptyWorkout = () => {
+    if (hasActiveWorkout) {
+      Alert.alert(
+        "Active Workout",
+        "You already have an active workout. Would you like to end it and start a new one?",
+        [
+          {
+            text: "Cancel",
+            style: "cancel"
+          },
+          {
+            text: "End & Start New",
+            onPress: () => {
+              closeDrawerWithGesture();
+              onStartEmptyWorkout();
+            }
+          }
+        ]
+      );
+    } else {
+      closeDrawerWithGesture();
+      onStartEmptyWorkout();
+    }
+  };
+
+  // Pan responder for gesture handling
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return gestureState.dy > 5; // Only respond to downward movement
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow downward movement (positive dy)
+        const newTranslateY = Math.max(0, gestureState.dy);
+        drawerTranslateY.setValue(newTranslateY);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        if (gestureState.dy > CLOSE_THRESHOLD) {
+          // User swiped down past threshold, close the drawer
+          closeDrawerWithGesture();
+        } else {
+          // Reset the drawer position with a spring animation
+          Animated.spring(drawerTranslateY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 50,
+            friction: 7
+          }).start();
+        }
+      }
+    })
+  ).current;
+
+  // Enhanced animation for opening and closing with exponential easing but no bounce
+  useEffect(() => {
+    if (isVisible) {
+      setIsAnimatingOut(false);
+      drawerTranslateY.setValue(0); // Reset any gesture translation
+      
+      // Use timing with custom easing instead of spring for smoother, non-bouncy open
+      Animated.timing(drawerAnim, {
+        toValue: 1,
+        duration: 350,
+        easing: Easing.out(Easing.exp), // Exponential easing without bounce
+        useNativeDriver: true,
+      }).start();
+    } else {
+      // Ensure we set animating out first before starting animation
+      setIsAnimatingOut(true);
+      
+      // Consistent closing animation
+      Animated.timing(drawerAnim, {
+        toValue: 0,
+        duration: 250,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (finished) {
+          setIsAnimatingOut(false);
+          drawerTranslateY.setValue(0); // Reset any gesture movement
+        }
+      });
+    }
+  }, [isVisible]);
+
+  // Close drawer with gesture - uses the same animation as button close
+  const closeDrawerWithGesture = () => {
+    setIsAnimatingOut(true);
+    
+    Animated.timing(drawerAnim, {
+      toValue: 0,
+      duration: 250,
+      easing: Easing.in(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) {
+        drawerTranslateY.setValue(0);
+        setIsAnimatingOut(false);
+        onClose();
+      }
+    });
+  };
+  
+  // Handle the X button press - use same animation as gesture close
+  const handleClosePress = () => {
+    // Start the animation first, then call onClose after it finishes
+    closeDrawerWithGesture();
+  };
+
+  // Filter routines based on search
+  useEffect(() => {
+    if (searchQuery.trim() === '') {
+      setFilteredLibrary(LIBRARY_ROUTINES);
+      setFilteredRecent(RECENT_ROUTINES);
+    } else {
+      const query = searchQuery.toLowerCase();
+      setFilteredLibrary(
+        LIBRARY_ROUTINES.filter(routine => 
+          routine.name.toLowerCase().includes(query) || 
+          routine.type.toLowerCase().includes(query)
+        )
+      );
+      setFilteredRecent(
+        RECENT_ROUTINES.filter(routine => 
+          routine.name.toLowerCase().includes(query)
+        )
+      );
+    }
+  }, [searchQuery]);
+
+  // Clear search when drawer closes
+  useEffect(() => {
+    if (!isVisible) {
+      setSearchQuery('');
+    }
+  }, [isVisible]);
+
+  // Only render if visible or in the process of animating out
+  if (!isVisible && !isAnimatingOut) {
+    return null;
+  }
+
+  // Calculate combined transform for both opening animation and drag gesture
+  const combinedTransform = Animated.add(
+    Animated.multiply(
+      Animated.subtract(1, drawerAnim),
+      DRAWER_HEIGHT
+    ),
+    drawerTranslateY
+  );
+
+  return (
+    <View style={styles.container}>
+      <TouchableWithoutFeedback onPress={closeDrawerWithGesture}>
+        <Animated.View 
+          style={[
+            styles.backdrop,
+            {
+              opacity: drawerAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: [0, 0.7],
+              }),
+            },
+          ]}
+        />
+      </TouchableWithoutFeedback>
+      
+      <Animated.View 
+        style={[
+          styles.drawer,
+          {
+            backgroundColor,
+            transform: [
+              {
+                translateY: combinedTransform
+              },
+            ],
+            paddingBottom: insets.bottom + 20,
+            height: DRAWER_HEIGHT,
+          },
+        ]}
+      >
+        {/* Drawer Handle - PanResponder attached here */}
+        <View 
+          style={styles.handleContainer}
+          {...panResponder.panHandlers}
+        >
+          <View style={styles.handle} />
+        </View>
+        
+        <View style={styles.header}>
+          <ThemedText style={styles.title}>Start Workout</ThemedText>
+          <PlatformPressable 
+            onPress={handleClosePress}
+            style={styles.closeButton}
+            hitSlop={10}
+          >
+            <X size={24} color={textColor} />
+          </PlatformPressable>
+        </View>
+        
+        {/* Start Empty Workout Button (single button) */}
+        <View style={styles.actionButtons}>
+          <PlatformPressable 
+            style={[styles.startWorkoutButton, { backgroundColor: accentColor }]} 
+            onPress={handleStartEmptyWorkout}
+          >
+            <View style={styles.buttonContent}>
+              <Play size={20} color="#fff" />
+              <ThemedText style={styles.startButtonText}>Start Empty Workout</ThemedText>
+            </View>
+          </PlatformPressable>
+        </View>
+        
+        {/* Search Bar */}
+        <View style={[styles.searchContainer, { borderColor }]}>
+          <Search size={20} color={placeholderColor} />
+          <TextInput
+            style={[styles.searchInput, { color: textColor }]}
+            placeholder="Search routines..."
+            placeholderTextColor={placeholderColor}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+        
+        <ScrollView 
+          style={styles.content}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Recent Routines Section */}
+          {filteredRecent.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Clock size={18} color={textColor} />
+                <ThemedText style={styles.sectionTitle}>Recent Routines</ThemedText>
+              </View>
+              
+              {filteredRecent.map((routine) => (
+                <PlatformPressable 
+                  key={routine.id}
+                  style={[styles.routineCard, { backgroundColor: cardBgColor }]}
+                  onPress={() => {
+                    closeDrawerWithGesture();
+                    onSelectRoutine(routine);
+                  }}
+                >
+                  <View>
+                    <ThemedText style={styles.routineName}>{routine.name}</ThemedText>
+                    <ThemedText style={styles.routineMeta}>{routine.date} • {routine.duration}</ThemedText>
+                  </View>
+                </PlatformPressable>
+              ))}
+            </View>
+          )}
+          
+          {/* Library Routines Section */}
+          {filteredLibrary.length > 0 && (
+            <View style={styles.section}>
+              <View style={styles.sectionHeader}>
+                <Dumbbell size={18} color={textColor} />
+                <ThemedText style={styles.sectionTitle}>Routine Library</ThemedText>
+              </View>
+              
+              {filteredLibrary.map((routine) => (
+                <PlatformPressable 
+                  key={routine.id}
+                  style={[styles.routineCard, { backgroundColor: cardBgColor }]}
+                  onPress={() => {
+                    closeDrawerWithGesture();
+                    onSelectRoutine(routine);
+                  }}
+                >
+                  <View>
+                    <ThemedText style={styles.routineName}>{routine.name}</ThemedText>
+                    <ThemedText style={styles.routineMeta}>{routine.type} • {routine.duration}</ThemedText>
+                  </View>
+                </PlatformPressable>
+              ))}
+            </View>
+          )}
+          
+          {/* No Results */}
+          {filteredLibrary.length === 0 && filteredRecent.length === 0 && (
+            <View style={styles.noResults}>
+              <ThemedText style={styles.noResultsText}>No routines found</ThemedText>
+            </View>
+          )}
+        </ScrollView>
+      </Animated.View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000',
+  },
+  drawer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 20,
+  },
+  handleContainer: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    height: 40,
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  handle: {
+    width: 36,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(150, 150, 150, 0.5)',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.pageHorizontal,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '600',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  actionButtons: {
+    marginHorizontal: SPACING.pageHorizontal,
+    marginBottom: 16,
+    gap: 12,
+  },
+  startWorkoutButton: {
+    borderRadius: 12,
+    padding: 14,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  startButtonText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#fff',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: SPACING.pageHorizontal,
+    marginBottom: 20,
+    paddingHorizontal: 12,
+    height: 46,
+    borderWidth: 1,
+    borderRadius: 10,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    paddingHorizontal: 10,
+    fontSize: 16,
+  },
+  content: {
+    flex: 1,
+  },
+  section: {
+    marginBottom: 24,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.pageHorizontal,
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  routineCard: {
+    marginHorizontal: SPACING.pageHorizontal,
+    marginBottom: 10,
+    padding: 16,
+    borderRadius: 12,
+  },
+  routineName: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  routineMeta: {
+    fontSize: 14,
+    opacity: 0.7,
+  },
+  noResults: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  noResultsText: {
+    fontSize: 16,
+    opacity: 0.7,
+  },
+}); 
