@@ -134,7 +134,10 @@ const TabItem = ({
 const TabBarBackground = ({ backgroundColor, bottomInset }: { backgroundColor: string; bottomInset: number }) => {
     const isDark = useThemeColor('background') === '#151718';
     const shouldUseBlur = Platform.OS === 'ios';
-    
+
+    const backgroundColorSecondary = useThemeColor('backgroundSubtleContrast');
+    const borderColor = useThemeColor('border');
+
     return (
         <View
             style={[
@@ -142,15 +145,23 @@ const TabBarBackground = ({ backgroundColor, bottomInset }: { backgroundColor: s
                 {
                     backgroundColor: shouldUseBlur ? 'transparent' : backgroundColor,
                     height: SPACING.navHeight + bottomInset + 10,
+                    borderTopColor: borderColor,
                 }
             ]}
         >
             {shouldUseBlur && (
-                <BlurView
-                    intensity={40}
-                    style={StyleSheet.absoluteFill}
-                    tint={isDark ? 'dark' : 'light'}
-                />
+                <>
+                    <BlurView
+                        intensity={40}
+                        style={StyleSheet.absoluteFill}
+                        // tint={isDark ? 'dark' : 'light'}
+                    />
+                    <LinearGradient
+                        colors={[backgroundColor, backgroundColor + '80']}
+                        style={StyleSheet.absoluteFill}
+                        locations={[1, 0]}
+                    />
+                </>
             )}
         </View>
     );
@@ -202,17 +213,17 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
     const handleSelectRoutine = (routine: any) => {
         // Close drawer first
         setIsWorkoutDrawerVisible(false);
-        
+
         // Navigate to selected routine with data
-        navigation.navigate('create-workout', { 
-            workout: routine 
+        navigation.navigate('create-workout', {
+            workout: routine
         });
     };
-    
+
     const handleStartEmptyWorkout = () => {
         // Close drawer first
         setIsWorkoutDrawerVisible(false);
-        
+
         // Start a new workout using the context method
         startNewWorkout();
     };
@@ -221,7 +232,7 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
         <View style={styles.container}>
             {/* Background underlay */}
             <TabBarBackground backgroundColor={backgroundColor} bottomInset={insets.bottom} />
-            
+
             {/* Tab bar content - positioned correctly */}
             <View style={[
                 styles.tabBar,
@@ -232,7 +243,7 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
                     if (route.name === 'active-workout') {
                         return null;
                     }
-                    
+
                     const { options } = descriptors[route.key];
                     const label = options.tabBarLabel ?? options.title ?? route.name;
                     const isFocused = state.index === index;
@@ -254,17 +265,17 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
                     );
                 })}
             </View>
-            
+
             {showStartWorkoutButton && (
-                <NewWorkoutButton 
-                    bottom={insets.bottom} 
-                    height={SPACING.navHeight} 
-                    onPress={handleOpenWorkoutDrawer} 
+                <NewWorkoutButton
+                    bottom={insets.bottom}
+                    height={SPACING.navHeight}
+                    onPress={handleOpenWorkoutDrawer}
                 />
             )}
-            
-            <WorkoutDrawer 
-                isVisible={isWorkoutDrawerVisible} 
+
+            <WorkoutDrawer
+                isVisible={isWorkoutDrawerVisible}
                 onClose={handleCloseWorkoutDrawer}
                 onSelectRoutine={handleSelectRoutine}
                 onStartEmptyWorkout={handleStartEmptyWorkout}
@@ -273,10 +284,10 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
         </View>
     );
 }
-
+    
 const NewWorkoutButton = ({ bottom, height, onPress }: { bottom: number; height: number; onPress: () => void }) => {
     const backgroundColor = useThemeColor('brand');
-    const color = useThemeColor('textContrast');
+    const color = useThemeColor('brandText');
     const scale = useRef(new Animated.Value(1)).current;
 
     const animateScale = () => {
@@ -346,7 +357,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         bottom: 0,
-        // borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopWidth: StyleSheet.hairlineWidth,
         overflow: 'hidden',
     },
     button: {
@@ -364,10 +375,11 @@ const styles = StyleSheet.create({
     },
     newWorkoutButton: {
         position: 'absolute',
-        borderRadius: 30,
+        borderRadius: 12,
         right: 20,
         height: 50, // Slightly reduce height
-        paddingHorizontal: 20,
+        paddingHorizontal: 18,
+        paddingLeft: 15,
         flexDirection: 'row',
         gap: 8,
         alignItems: 'center',

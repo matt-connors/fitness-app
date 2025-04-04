@@ -1,6 +1,7 @@
 export const SPACING = {
-    pageHorizontal: 12,
-    pageHorizontalInside: 8,
+    pageHorizontal: 16,
+    pageHorizontalInside: 16,
+    pageVerticalInside: 18,
     pageVertical: 22,
     headerHeight: 54,
     navHeight: 50

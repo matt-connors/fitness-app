@@ -12,8 +12,8 @@ export function Section({ children, style }: { children?: React.ReactNode, style
 
 const styles = StyleSheet.create({
     container: {
-        borderRadius: 26,
-        padding: SPACING.pageHorizontalInside,
+        borderRadius: 14,
+        // paddingHorizontal: SPACING.pageHorizontalInside,
     },
 });
 
