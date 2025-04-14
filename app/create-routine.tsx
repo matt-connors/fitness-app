@@ -6,7 +6,7 @@ import { PlatformPressable } from '@react-navigation/elements';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { SPACING } from '@/constants/Spacing';
 import { Stack } from 'expo-router';
-import { Check, Plus, Trash2, X, ChevronDown, Clock, AlignJustify, MoreVertical, ChevronRight, HelpCircle } from 'lucide-react-native';
+import { Check, Plus, Trash2, X, ChevronDown, Clock, AlignJustify, MoreVertical, ChevronRight, HelpCircle, Search } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StandardHeader } from '@/components/ui/StandardHeader';
@@ -269,15 +269,43 @@ export default function CreateRoutineScreen() {
     );
 
     // Render an exercise item in the dropdown
-    const renderExerciseItem = ({ item }: { item: any }) => (
+    const renderExerciseItem = ({ item, index }: { item: any, index: number }) => (
         <TouchableOpacity
-            style={styles.exerciseDropdownItem}
+            style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: SPACING.pageHorizontalInside,
+                paddingHorizontal: 16,
+                borderTopWidth: index > 0 ? StyleSheet.hairlineWidth : 0,
+                borderTopColor: borderColor
+            }}
             onPress={() => selectExercise(showExerciseDropdown!, item)}
         >
-            <ThemedText style={styles.exerciseName}>{item.name}</ThemedText>
-            <ThemedText style={[styles.exerciseDetails, { color: textColorSubtle }]}>
-                {item.muscle} • {item.equipment}
-            </ThemedText>
+            <View style={{
+                flex: 1,
+                justifyContent: 'center'
+            }}>
+                <ThemedText style={{
+                    fontSize: 16,
+                    fontWeight: '400',
+                    lineHeight: 20,
+                    marginBottom: 3,
+                }} numberOfLines={1} ellipsizeMode="tail">
+                    {item.name}
+                </ThemedText>
+                <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center'
+                }}>
+                    <ThemedText style={{
+                        fontSize: 12,
+                        lineHeight: 16,
+                        color: textColorSubtle
+                    }} numberOfLines={1} ellipsizeMode="tail">
+                        {item.muscle} • {item.equipment}
+                    </ThemedText>
+                </View>
+            </View>
         </TouchableOpacity>
     );
 
@@ -515,46 +543,88 @@ export default function CreateRoutineScreen() {
                             <Modal
                                 visible={showExerciseDropdown === exercise.id}
                                 transparent={true}
-                                animationType="fade"
+                                animationType="none"
                                 onRequestClose={() => setShowExerciseDropdown(null)}
                             >
                                 <View style={styles.modalOverlay}>
-                                    <View style={[styles.modalContent, { backgroundColor, borderColor }]}>
-                                        <View style={styles.modalHeader}>
-                                            <ThemedText style={styles.modalTitle}>Select Exercise</ThemedText>
-                                            <TouchableOpacity onPress={() => setShowExerciseDropdown(null)}>
-                                                <X size={24} color={textColor} />
-                                            </TouchableOpacity>
-                                        </View>
-                                        <View style={styles.searchContainer}>
+                                    <View style={[styles.modalContent, {
+                                        backgroundColor,
+                                        borderColor: borderStrongerColor,
+                                        borderRadius: 12,
+                                        shadowColor: "#000",
+                                        shadowOffset: { width: 0, height: 2 },
+                                        shadowOpacity: 0.15,
+                                        shadowRadius: 6,
+                                        elevation: 5
+                                    }]}>
+
+
+                                        <View style={[styles.searchInputContainer, {
+                                            backgroundColor: 'transparent',
+                                            borderColor,
+                                            marginBottom: SPACING.pageHorizontalInside
+                                        }]}>
+                                            <Search size={18} color={textColorMuted} style={styles.searchIcon} />
                                             <TextInput
                                                 style={[styles.searchInput, { color: textColor }]}
+                                                placeholder="Search routines..."
+                                                placeholderTextColor={textColorMuted} // 50% opacity
+                                                value={searchQuery}
+                                                onChangeText={setSearchQuery}
+                                                returnKeyType="search"
+                                                autoCorrect={false}
+                                            />
+                                        </View>
+
+                                        {/* <View style={{
+                                            paddingHorizontal: 16,
+                                            paddingVertical: 12
+                                        }}>
+                                            <TextInput
+                                                style={{
+                                                    fontSize: 16,
+                                                    padding: 0,
+                                                    color: textColor
+                                                }}
                                                 placeholder="Search exercises..."
                                                 placeholderTextColor={textColorMuted}
                                                 value={searchQuery}
                                                 onChangeText={setSearchQuery}
-                                                autoFocus
+                                                autoFocus={false}
                                             />
-                                        </View>
-
-                                        {isLoading ? (
-                                            <View style={styles.loadingContainer}>
-                                                <ActivityIndicator size="small" color={accentColor} />
-                                            </View>
-                                        ) : (
+                                        </View> */}
+                                        <ThemedSection>
                                             <FlatList
                                                 data={filteredExercises}
                                                 renderItem={renderExerciseItem}
                                                 keyExtractor={item => item.id}
-                                                style={styles.dropdownList}
+                                                // style={{ maxHeight: '80%' }}
                                                 keyboardShouldPersistTaps="handled"
+                                                initialNumToRender={10}
+                                                maxToRenderPerBatch={10}
+                                                windowSize={10}
+                                                removeClippedSubviews={true}
                                                 ListEmptyComponent={
-                                                    <View style={styles.emptyListContainer}>
-                                                        <ThemedText style={styles.emptyListText}>No exercises found</ThemedText>
+                                                    <View style={{
+                                                        padding: 20,
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        height: 120
+                                                    }}>
+                                                        <ThemedText style={{
+                                                            fontSize: 15,
+                                                            textAlign: 'center',
+                                                            color: textColorMuted
+                                                        }}>
+                                                            {searchQuery
+                                                                ? "No exercises found matching your search"
+                                                                : "Start typing to search exercises"}
+                                                        </ThemedText>
                                                     </View>
                                                 }
                                             />
-                                        )}
+                                        </ThemedSection>
+
                                     </View>
                                 </View>
                             </Modal>
@@ -593,7 +663,7 @@ export default function CreateRoutineScreen() {
                                     <View style={styles.optionalFieldsRow}>
                                         {/* Sets Input */}
                                         <View style={styles.optionalField}>
-                                            <ThemedText style={[styles.optionalFieldLabel, { color: textColorMuted}]}>Sets</ThemedText>
+                                            <ThemedText style={[styles.optionalFieldLabel, { color: textColorMuted }]}>Sets</ThemedText>
                                             <TextInput
                                                 style={{
                                                     borderWidth: 1,
@@ -614,7 +684,7 @@ export default function CreateRoutineScreen() {
 
                                         {/* Reps Input */}
                                         <View style={styles.optionalField}>
-                                            <ThemedText style={[styles.optionalFieldLabel, { color: textColorMuted}]}>Reps</ThemedText>
+                                            <ThemedText style={[styles.optionalFieldLabel, { color: textColorMuted }]}>Reps</ThemedText>
                                             <TextInput
                                                 style={{
                                                     borderWidth: 1,
@@ -636,7 +706,7 @@ export default function CreateRoutineScreen() {
                                         {/* RPE or Weight Input based on showRpe */}
                                         <View style={styles.optionalField}>
                                             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                                <ThemedText style={[styles.optionalFieldLabel, { color: textColorMuted}]}>
+                                                <ThemedText style={[styles.optionalFieldLabel, { color: textColorMuted }]}>
                                                     {exercise.showRpe ? "RPE %" : "Weight (lbs)"}
                                                 </ThemedText>
                                                 {exercise.showRpe && (
@@ -857,7 +927,7 @@ export default function CreateRoutineScreen() {
                                     <View style={styles.optionalFieldsRow}>
                                         {/* Rest Pause Input */}
                                         <View style={styles.optionalField}>
-                                            <ThemedText style={[styles.optionalFieldLabel, { color: textColorMuted}]}>Rest (sec)</ThemedText>
+                                            <ThemedText style={[styles.optionalFieldLabel, { color: textColorMuted }]}>Rest (sec)</ThemedText>
                                             <TextInput
                                                 style={{
                                                     borderWidth: 1,
@@ -878,7 +948,7 @@ export default function CreateRoutineScreen() {
 
                                         {/* Tempo Input */}
                                         <View style={styles.optionalField}>
-                                            <ThemedText style={[styles.optionalFieldLabel, { color: textColorMuted}]}>Tempo (sec)</ThemedText>
+                                            <ThemedText style={[styles.optionalFieldLabel, { color: textColorMuted }]}>Tempo (sec)</ThemedText>
                                             <TextInput
                                                 style={{
                                                     borderWidth: 1,
@@ -964,6 +1034,20 @@ export default function CreateRoutineScreen() {
 }
 
 const styles = StyleSheet.create({
+    searchInputContainer: {
+        // flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderRadius: 10,
+        borderWidth: 1,
+        height: 40,
+        paddingHorizontal: 12,
+    },
+    searchIcon: {
+        marginRight: 10 + 5,
+        marginLeft: 5,
+        // opacity: 0.7,
+    },
     container: {
         flex: 1,
     },
@@ -1010,7 +1094,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         gap: SPACING.pageHorizontalInside,
         alignItems: 'center',
-        // marginBottom: 16,
     },
     exerciseNameInput: {
         flexDirection: 'row',
@@ -1036,31 +1119,24 @@ const styles = StyleSheet.create({
         maxHeight: 200,
     },
     searchContainer: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#ddd',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
     },
     searchInput: {
-        fontSize: 14,
+        flex: 1,
+        height: '100%',
+        fontSize: 16,
         padding: 0,
     },
     dropdownList: {
-        maxHeight: 150,
+        maxHeight: '70%',
     },
     exerciseDropdownItem: {
-        paddingVertical: 10,
-        paddingHorizontal: 12,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: '#ddd',
-    },
-    exerciseName: {
-        fontSize: 14,
-        fontWeight: '500',
-    },
-    exerciseDetails: {
-        fontSize: 12,
-        marginTop: 2,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: SPACING.pageHorizontalInside,
+        paddingHorizontal: 16,
+        borderTopWidth: StyleSheet.hairlineWidth,
     },
     optionalFieldsRow: {
         flexDirection: 'row',
@@ -1071,13 +1147,11 @@ const styles = StyleSheet.create({
     },
     optionalField: {
         flex: 1,
-        // marginRight: 12,
     },
     optionalFieldLabel: {
         fontSize: 13,
         fontWeight: '500',
         marginBottom: 4,
-        // color: '#888',
     },
     optionalFieldInput: {
         borderWidth: 1,
@@ -1085,6 +1159,8 @@ const styles = StyleSheet.create({
         paddingHorizontal: 12,
         paddingVertical: 6,
         fontSize: 16,
+        color: '#000',
+        borderColor: '#ccc',
     },
     notesField: {
         marginTop: 4,
@@ -1128,10 +1204,12 @@ const styles = StyleSheet.create({
     emptyListContainer: {
         padding: 20,
         alignItems: 'center',
+        justifyContent: 'center',
+        height: 120,
     },
     emptyListText: {
-        fontSize: 14,
-        opacity: 0.7,
+        fontSize: 15,
+        textAlign: 'center',
     },
     bottomButtonContainer: {
         padding: SPACING.pageHorizontal,
@@ -1163,24 +1241,27 @@ const styles = StyleSheet.create({
     },
     modalOverlay: {
         flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 20,
+        padding: SPACING.pageHorizontalInside,
     },
     modalContent: {
         width: '100%',
         maxHeight: '80%',
         borderRadius: 12,
-        borderWidth: 1,
+        borderWidth: 0,
         overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        padding: SPACING.pageHorizontalInside,
     },
     modalHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 14,
         borderBottomWidth: StyleSheet.hairlineWidth,
     },
     modalTitle: {
@@ -1188,7 +1269,6 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     setsToggleContainer: {
-        // marginBottom: 16,
         marginVertical: SPACING.pageVerticalInside + 4,
     },
     checkboxContainer: {
@@ -1215,7 +1295,6 @@ const styles = StyleSheet.create({
     setNumberText: {
         fontSize: 16,
         fontWeight: '400',
-        marginTop: 7,
     },
     additionalSetRow: {
         marginTop: 8,
@@ -1253,12 +1332,11 @@ const styles = StyleSheet.create({
     expandedFieldsContainer: {
         marginTop: 6,
         paddingTop: 6,
-        // borderTopWidth: StyleSheet.hairlineWidth,
     },
     headerRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginBottom: 8,
+        marginBottom: 4,
     },
     columnHeader: {
         flex: 1,
@@ -1277,5 +1355,23 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         marginLeft: 4,
         backgroundColor: 'transparent',
+    },
+    routineInfo: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    routineName: {
+        fontSize: 16,
+        fontWeight: '400',
+        lineHeight: 20,
+        marginBottom: 3,
+    },
+    routineMetaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    metaText: {
+        fontSize: 12,
+        lineHeight: 16,
     },
 }); 
