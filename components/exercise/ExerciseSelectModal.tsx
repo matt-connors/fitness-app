@@ -36,6 +36,7 @@ const ExerciseSelectModal: React.FC<ExerciseSelectModalProps> = ({
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: SPACING.pageHorizontalInside,
+        // marginBottom: SPACING.pageVerticalInside,
         borderTopWidth: index > 0 ? 0.5 : 0,
         borderTopColor: contrastBackgroundColor
       }}

@@ -151,17 +151,43 @@ const ExerciseSets: React.FC<ExerciseSetsProps> = ({
         <View style={{
           flexDirection: 'row',
           justifyContent: 'space-between',
-          marginBottom: 4,
+          alignItems: 'flex-start',
+          marginBottom: 5,
+          gap: SPACING.pageHorizontalInside,
         }}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            {/* No heading for Set # column */}
+          {/* Set # header */}
+          <View style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}>
+            <ThemedText style={{ fontSize: 13, fontWeight: '500', color: textColorMuted }}>
+              {/* Set # */}
+            </ThemedText>
           </View>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <ThemedText style={{ fontSize: 13, fontWeight: '500' }}>Reps</ThemedText>
+
+          {/* Reps header */}
+          <View style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}>
+            <ThemedText style={{ fontSize: 13, fontWeight: '500', color: textColorMuted }}>
+              Reps
+            </ThemedText>
           </View>
-          <View style={{ flex: 1, marginRight: 12 }}>
+
+          {/* RPE/Weight header */}
+          <View style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 5,
+          }}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <ThemedText style={{ fontSize: 13, fontWeight: '500' }}>
+              <ThemedText style={{ fontSize: 13, fontWeight: '500', color: textColorMuted }}>
                 {exercise.showRpe ? "RPE" : "Weight (lbs)"}
               </ThemedText>
               {exercise.showRpe && (
@@ -177,24 +203,32 @@ const ExerciseSets: React.FC<ExerciseSetsProps> = ({
         </View>
 
         {exercise.multipleSets?.map((set, index) => (
-          <View key={`set-${index}`}>
+          <View key={`set-${index}`} style={{
+            marginBottom: index === exercise.multipleSets!.length - 1 ? SPACING.pageHorizontalInside * 1.5 : SPACING.pageHorizontalInside
+          }}>
             <View style={{
               flexDirection: 'row',
               justifyContent: 'space-between',
               alignItems: 'flex-start',
-              marginBottom: 16,
               gap: SPACING.pageHorizontalInside,
-              marginTop: index > 0 ? 8 : 0
             }}>
               {/* Set Number Label */}
-              <View style={{ flex: 1, marginRight: 12 }}>
+              <View style={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                height: 42,
+              }}>
                 <ThemedText style={{ fontSize: 16, fontWeight: '400' }}>
                   Set #{set.setNumber}
                 </ThemedText>
               </View>
 
               {/* Reps Input */}
-              <View style={{ flex: 1 }}>
+              <View style={{
+                flex: 1,
+              }}>
                 <TextInput
                   style={{
                     borderWidth: 1,
@@ -214,7 +248,9 @@ const ExerciseSets: React.FC<ExerciseSetsProps> = ({
               </View>
 
               {/* RPE or Weight Input based on showRpe */}
-              <View style={{ flex: 1 }}>
+              <View style={{
+                flex: 1,
+              }}>
                 <TextInput
                   style={{
                     borderWidth: 1,

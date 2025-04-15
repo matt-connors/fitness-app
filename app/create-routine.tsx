@@ -18,6 +18,7 @@ import * as Haptics from 'expo-haptics';
 import { Exercise, RoutineData } from '@/types/Exercise';
 import ExerciseItem from '@/components/exercise/ExerciseItem';
 import RpeTooltip from '@/components/exercise/RpeTooltip';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function CreateRoutineScreen() {
     const router = useRouter();
@@ -35,7 +36,6 @@ export default function CreateRoutineScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [routineNameError, setRoutineNameError] = useState(false);
     const [showRpeTooltip, setShowRpeTooltip] = useState<string | null>(null);
-    const [isDragging, setIsDragging] = useState(false);
 
     // Theme colors
     const textColor = useThemeColor('text');
@@ -43,6 +43,7 @@ export default function CreateRoutineScreen() {
     const accentColor = useThemeColor('brand');
     const accentTextColor = useThemeColor('brandText');
     const contrastBackgroundColor = useThemeColor('backgroundContrast');
+    const backgroundColor = useThemeColor('background');
 
     // Load exercise data on mount
     useEffect(() => {
@@ -139,7 +140,7 @@ export default function CreateRoutineScreen() {
         setExercises(exercises.filter(exercise => exercise.id !== id));
     };
 
-    const updateExercise = (id: string, field: string, value: string | number) => {
+    const updateExercise = (id: string, field: string, value: string | number | boolean) => {
         setExercises(
             exercises.map(exercise =>
                 exercise.id === id ? { ...exercise, [field]: value } : exercise
@@ -286,32 +287,11 @@ export default function CreateRoutineScreen() {
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         // Update exercises with the new order
         setExercises(data);
-        setIsDragging(false);
     };
 
     // Render an exercise item for the draggable list
     const renderExerciseItem = ({ item, drag, isActive, getIndex }: RenderItemParams<Exercise>) => {
         const index = getIndex() || 0;
-        // Add ref for the timeout
-        const longPressTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-        // Add state to track if we're in a potential drag state
-        const [isPressedDown, setIsPressedDown] = React.useState(false);
-        
-        // Set global dragging state when active
-        React.useEffect(() => {
-            if (isActive) {
-                setIsDragging(true);
-            }
-        }, [isActive]);
-
-        // Clear timeout on unmount
-        React.useEffect(() => {
-            return () => {
-                if (longPressTimeoutRef.current) {
-                    clearTimeout(longPressTimeoutRef.current);
-                }
-            };
-        }, []);
 
         return (
             <View style={{ marginBottom: SPACING.pageHorizontalInside }}>
@@ -320,70 +300,30 @@ export default function CreateRoutineScreen() {
                     <TouchableOpacity
                         onPressIn={(e) => {
                             e.stopPropagation();
-                            setIsPressedDown(true);
-                            
-                            // Start a timeout to initiate drag after 500ms
-                            longPressTimeoutRef.current = setTimeout(() => {
-                                // Only trigger drag if still pressed down
-                                if (isPressedDown) {
-                                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                    drag();
-                                }
-                            }, 500); // 500ms delay for press-and-hold
-                        }}
-                        onPressOut={() => {
-                            // Clear the timeout if user releases before the delay
-                            if (longPressTimeoutRef.current) {
-                                clearTimeout(longPressTimeoutRef.current);
-                                longPressTimeoutRef.current = null;
-                            }
-                            setIsPressedDown(false);
+                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            drag();
                         }}
                         style={{
                             flexDirection: 'row',
                             gap: SPACING.pageHorizontalInside,
                             alignItems: 'center',
+                            // marginBottom: SPACING.pageHorizontalInside,
                             padding: SPACING.pageHorizontalInside,
                             paddingVertical: SPACING.pageHorizontalInside * 1.4,
                             borderRadius: 8,
-                            backgroundColor: isPressedDown ? contrastBackgroundColor : 'transparent',
+                            backgroundColor: 'transparent',
                             opacity: isActive ? 0.7 : 1,
-                            flex: 1,
-                            position: 'relative'
+                            flex: 1
                         }}
+                        delayLongPress={100}
                         activeOpacity={0.7}
                         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                         <GripVertical
                             size={18}
-                            color={isActive || isPressedDown ? accentColor : textColorMuted}
+                            color={isActive ? accentColor : textColorMuted}
                         />
-                        <ThemedText style={{ 
-                            fontSize: 16, 
-                            color: isActive || isPressedDown ? textColor : textColorMuted,
-                            fontWeight: isActive || isPressedDown ? '500' : '400'
-                        }}>
-                            Exercise #{index + 1}
-                        </ThemedText>
-                        
-                        {/* "Hold to drag" tooltip that appears briefly when pressed */}
-                        {isPressedDown && !isActive && (
-                            <View style={{
-                                position: 'absolute',
-                                top: -30,
-                                left: 30,
-                                backgroundColor: accentColor,
-                                paddingHorizontal: 8,
-                                paddingVertical: 4,
-                                borderRadius: 4,
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                            }}>
-                                <ThemedText style={{ color: accentTextColor, fontSize: 12 }}>
-                                    Hold to drag...
-                                </ThemedText>
-                            </View>
-                        )}
+                        <ThemedText style={{ fontSize: 16, color: textColorMuted }}>Exercise #{index + 1}</ThemedText>
                     </TouchableOpacity>
                     {/* Delete Exercise Button */}
                     <TouchableOpacity
@@ -393,6 +333,7 @@ export default function CreateRoutineScreen() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             borderRadius: 10,
+                            // backgroundColor: contrastBackgroundColor
                         }}
                         onPress={() => removeExercise(item.id)}
                         hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
@@ -477,10 +418,9 @@ export default function CreateRoutineScreen() {
 
     // Render an empty state component when there are no exercises
     const EmptyList = () => (
-        <View style={styles.emptyContainer}>
-            <ThemedText style={styles.emptyListText}>
-                No exercises added yet
-            </ThemedText>
+        <View style={{
+            height: SPACING.pageHorizontalInside
+        }}>
         </View>
     );
 
@@ -507,27 +447,6 @@ export default function CreateRoutineScreen() {
                     onClose={() => setShowRpeTooltip(null)}
                 />
 
-                {/* Dragging Mode Indicator */}
-                {isDragging && (
-                    <View style={{
-                        position: 'absolute',
-                        top: insets.top + 60, // Position below header
-                        left: 0,
-                        right: 0,
-                        backgroundColor: accentColor,
-                        padding: 8,
-                        zIndex: 10,
-                        alignItems: 'center',
-                        flexDirection: 'row',
-                        justifyContent: 'center',
-                    }}>
-                        <GripVertical size={16} color={accentTextColor} style={{marginRight: 8}} />
-                        <ThemedText style={{ color: accentTextColor, fontWeight: '500' }}>
-                            Rearranging Exercises
-                        </ThemedText>
-                    </View>
-                )}
-
                 {/* Direct container instead of PageContainer */}
                 <View style={[
                     styles.content,
@@ -548,10 +467,10 @@ export default function CreateRoutineScreen() {
                         scrollEventThrottle={16}
                         keyboardShouldPersistTaps="handled"
                         scrollEnabled={true}
-                        activationDistance={8}
-                        dragHitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                        activationDistance={5}
+                        dragHitSlop={{ top: 0, bottom: 0, left: 0, right: 0 }}
                         dragItemOverflow={false}
-                        autoscrollThreshold={150}
+                        autoscrollThreshold={100}
                         contentContainerStyle={{
                             paddingBottom: insets.bottom + 80 // Extra padding for bottom button
                         }}
@@ -563,11 +482,22 @@ export default function CreateRoutineScreen() {
                     styles.bottomButtonContainer,
                     {
                         paddingBottom: insets.bottom + 15,
+                        backgroundColor: 'transparent', // Make the container transparent
                     }
-                ]}>
+                ]}
+                pointerEvents="box-none" // Allow touch events to pass through except for its visible children
+                >
+                    <LinearGradient
+                        colors={[backgroundColor, 'transparent']}
+                        style={styles.gradientBackground}
+                        start={{ x: 0.5, y: 1 }}
+                        end={{ x: 0.5, y: 0 }}
+                        pointerEvents="none" // Allow touch events to pass through the gradient
+                    />
                     <PlatformPressable
                         onPress={handleSave}
                         style={[styles.saveButton, { backgroundColor: accentColor }]}
+                        pointerEvents="auto" // Explicitly make sure the button receives touch events
                     >
                         <Check size={24} color={accentTextColor} />
                         <ThemedText style={[styles.saveButtonText, { color: accentTextColor }]}>Save Routine</ThemedText>
@@ -607,12 +537,12 @@ const styles = StyleSheet.create({
         marginLeft: SPACING.pageHorizontalInside,
     },
     exercisesSection: {
-        marginTop: 24,
+        marginTop: 14,
     },
     sectionHeader: {
         fontSize: 13,
         fontWeight: '500',
-        marginBottom: 12,
+        // marginBottom: 12,
         color: '#888',
     },
     addExerciseButton: {
@@ -649,6 +579,14 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 5,
         zIndex: 5, // Ensure it's above other content
+    },
+    gradientBackground: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: -100, // Extend gradient up 100 points
+        bottom: 0,
+        zIndex: -1, // Behind the button
     },
     saveButton: {
         flexDirection: 'row',
