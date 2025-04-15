@@ -294,7 +294,9 @@ export default function CreateRoutineScreen() {
         const index = getIndex() || 0;
 
         return (
-            <View style={{ marginBottom: SPACING.pageHorizontalInside }}>
+            <View style={{
+                marginBottom: index === exercises.length - 1 ? 0 : SPACING.pageHorizontalInside / 2
+             }}>
                 {/* Drag handle as a separate component */}
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TouchableOpacity
@@ -309,7 +311,7 @@ export default function CreateRoutineScreen() {
                             alignItems: 'center',
                             // marginBottom: SPACING.pageHorizontalInside,
                             padding: SPACING.pageHorizontalInside,
-                            paddingVertical: SPACING.pageHorizontalInside * 1.4,
+                            paddingVertical: SPACING.pageHorizontalInside * 1.3,
                             borderRadius: 8,
                             backgroundColor: 'transparent',
                             opacity: isActive ? 0.7 : 1,

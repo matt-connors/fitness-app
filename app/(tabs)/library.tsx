@@ -105,6 +105,7 @@ export default function LibraryScreen() {
     const [isSearching, setIsSearching] = useState(false);
     const [recentSearches, setRecentSearches] = useState(RECENT_SEARCHES);
     const [selectedType, setSelectedType] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<'routines' | 'regiments'>('routines');
 
     // State to track if "All" is explicitly selected - set to true by default
     const [isAllChipSelected, setIsAllChipSelected] = useState(true);
@@ -304,16 +305,15 @@ export default function LibraryScreen() {
 
     // Create Button for the header
     const createButton = (
-        <></>
-        // <PlatformPressable
-        //     style={[styles.createButton, { borderColor }]}
-        //     onPress={handleCreateRoutine}
-        // >
-        //     <Plus size={26} color={textColor} strokeWidth={1.7} />
-        //     {/* <ThemedText style={[styles.createButtonText, { color: accentColor }]}>
-        //         Create
-        //     </ThemedText> */}
-        // </PlatformPressable>
+        <PlatformPressable
+            style={[styles.createButton, { borderColor }]}
+            onPress={handleCreateRoutine}
+        >
+            <Plus size={26} color={textColor} strokeWidth={1.7} />
+            {/* <ThemedText style={[styles.createButtonText, { color: accentColor }]}>
+                Create
+            </ThemedText> */}
+        </PlatformPressable>
     );
 
     // Remove a workout from recent routines
@@ -573,91 +573,131 @@ export default function LibraryScreen() {
         [renderSearchResultItem]
     );
 
+    // Tab switching function
+    const handleTabChange = (tab: 'routines' | 'regiments') => {
+        setActiveTab(tab);
+    };
+
+    // Create tab component for the header
+    const tabComponent = (
+        <View style={[styles.tabContainer]}>
+            <TouchableOpacity 
+                style={[
+                    styles.tabButton, 
+                    activeTab === 'routines' && [styles.activeTabButton, { backgroundColor: contrastBackgroundColor }]
+                ]}
+                onPress={() => handleTabChange('routines')}
+            >
+                <ThemedText style={[
+                    styles.tabText, 
+                    { color: activeTab === 'routines' ? textColor : textColorMuted }
+                ]}>
+                    Routines
+                </ThemedText>
+            </TouchableOpacity>
+            <TouchableOpacity 
+                style={[
+                    styles.tabButton, 
+                    activeTab === 'regiments' && [styles.activeTabButton, { backgroundColor: contrastBackgroundColor }]
+                ]}
+                onPress={() => handleTabChange('regiments')}
+            >
+                <ThemedText style={[
+                    styles.tabText, 
+                    { color: activeTab === 'regiments' ? textColor : textColorMuted }
+                ]}>
+                    Regiments
+                </ThemedText>
+            </TouchableOpacity>
+        </View>
+    );
+
     return (
         <ThemedView style={styles.screen}>
             <StandardHeader
-                title="Routine Library"
+                title="Program Library"
                 rightContent={createButton}
+                additionalContent={tabComponent}
             />
 
             <PageContainer
                 hasHeader={true}
-                style={styles.container}
+                style={[styles.container, { paddingTop: 26 }]}
             >
                 <View style={styles.contentContainer}>
-                    {/* Search bar now in main content */}
-                    <TouchableOpacity
-                        style={[styles.searchBarContainer, { backgroundColor: contrastBackgroundColor, borderColor }]}
-                        onPress={() => showSearchOverlay(true)}
-                        activeOpacity={0.7}
-                    >
-                        <Search size={20} color={textColorMuted} style={styles.searchIcon} strokeWidth={2} />
-                        <ThemedText
-                            style={[styles.searchPlaceholder, { color: textColorMuted }]}
-                        >
-                            Search Routines...
-                        </ThemedText>
-                    </TouchableOpacity>
-
-                    <ScrollView style={styles.scrollContainer}>
-                        {/* Recent Routines Section */}
-                        {renderSectionHeader('Recent Routines')}
-                        <ThemedSection style={styles.section}>
-                            {RECENT_ROUTINES.length > 0 && (
-                                <View >
-
-                                    {RECENT_ROUTINES.map(renderWorkoutCard)}
-                                </View>
-                            )}
-                        </ThemedSection>
-
-                        {/* User Created Workouts Section */}
-                        {renderSectionHeader('Saved Routines')}
-                        <ThemedSection style={styles.section}>
-                            <View>
-
-                                {USER_CREATED_WORKOUTS.map(renderWorkoutCard)}
-                                <TouchableOpacity
-                                    style={[styles.createWorkoutButton, { backgroundColor: contrastBackgroundColor }]}
-                                    onPress={handleCreateRoutine}
+                    {/* Render content based on active tab */}
+                    {activeTab === 'routines' ? (
+                        <>
+                            {/* Search bar in main content */}
+                            <TouchableOpacity
+                                style={[styles.searchBarContainer, { backgroundColor: contrastBackgroundColor, borderColor }]}
+                                onPress={() => showSearchOverlay(true)}
+                                activeOpacity={0.7}
+                            >
+                                <Search size={20} color={textColorMuted} style={styles.searchIcon} strokeWidth={2} />
+                                <ThemedText
+                                    style={[styles.searchPlaceholder, { color: textColorMuted }]}
                                 >
-                                    <Plus size={20} color={textColor} strokeWidth={1.7} />
-                                    <ThemedText style={[styles.createWorkoutText, { color: textColor }]}>
-                                        Create Routine
-                                    </ThemedText>
-                                </TouchableOpacity>
-                            </View>
-                        </ThemedSection>
+                                    Search Routines...
+                                </ThemedText>
+                            </TouchableOpacity>
+
+                            <ScrollView style={styles.scrollContainer}>
+                                {/* User Created Workouts Section */}
+                                {renderSectionHeader('Saved Routines')}
+                                <ThemedSection style={styles.section}>
+                                    <View>
+
+                                        {USER_CREATED_WORKOUTS.map(renderWorkoutCard)}
+                                        <TouchableOpacity
+                                            style={[styles.createWorkoutButton, { backgroundColor: contrastBackgroundColor }]}
+                                            onPress={handleCreateRoutine}
+                                        >
+                                            <Plus size={20} color={textColor} strokeWidth={1.7} />
+                                            <ThemedText style={[styles.createWorkoutText, { color: textColor }]}>
+                                                Create Routine
+                                            </ThemedText>
+                                        </TouchableOpacity>
+                                    </View>
+                                </ThemedSection>
 
 
-                        {/* Platform Workouts Section */}
-                        <View style={styles.section}>
-                            {renderSectionHeader('Routine Library')}
-                            <ThemedSection style={styles.section}>
-                                <FlatList
-                                    data={allPlatformWorkouts}
-                                    renderItem={renderWorkoutCardMemoized}
-                                    keyExtractor={item => item.id}
-                                    onEndReached={debouncedLoadMore}
-                                    onEndReachedThreshold={0.5}
-                                    scrollEnabled={false} // Disable scrolling since parent ScrollView handles it
-                                    initialNumToRender={10}
-                                    maxToRenderPerBatch={10}
-                                    windowSize={15}
-                                    removeClippedSubviews={true}
-                                    ListFooterComponent={
-                                        isLoadingMore ? (
-                                            <View style={styles.loadingFooter}>
-                                                <ActivityIndicator size="small" color={accentColor} />
-                                                <ThemedText style={styles.loadingText}>Loading more workouts...</ThemedText>
-                                            </View>
-                                        ) : null
-                                    }
-                                />
-                            </ThemedSection>
-
+                                {/* Platform Workouts Section */}
+                                <View style={styles.section}>
+                                    {renderSectionHeader('Routine Library')}
+                                    <ThemedSection style={styles.section}>
+                                        <FlatList
+                                            data={allPlatformWorkouts}
+                                            renderItem={renderWorkoutCardMemoized}
+                                            keyExtractor={item => item.id}
+                                            onEndReached={debouncedLoadMore}
+                                            onEndReachedThreshold={0.5}
+                                            scrollEnabled={false} // Disable scrolling since parent ScrollView handles it
+                                            initialNumToRender={10}
+                                            maxToRenderPerBatch={10}
+                                            windowSize={15}
+                                            removeClippedSubviews={true}
+                                            ListFooterComponent={
+                                                isLoadingMore ? (
+                                                    <View style={styles.loadingFooter}>
+                                                        <ActivityIndicator size="small" color={accentColor} />
+                                                        <ThemedText style={styles.loadingText}>Loading more workouts...</ThemedText>
+                                                    </View>
+                                                ) : null
+                                            }
+                                        />
+                                    </ThemedSection>
+                                </View>
+                            </ScrollView>
+                        </>
+                    ) : (
+                        // Empty Regiment view - will be implemented later
+                        <View style={styles.emptyRegimentContainer}>
+                            <ThemedText style={styles.emptyRegimentText}>
+                                Regiment features coming soon
+                            </ThemedText>
                         </View>
-                    </ScrollView>
+                    )}
                 </View>
             </PageContainer>
 
@@ -800,34 +840,29 @@ const styles = StyleSheet.create({
     },
     contentContainer: {
         flex: 1,
-        // paddingHorizontal: SPACING.pageHorizontal,
-        // paddingTop: SPACING.pageHorizontal
-        paddingTop: 28
+        paddingTop: 0 // Remove top padding since the tabs are now in the header
     },
     scrollContainer: {
         flex: 1,
-        // marginTop: 14,
     },
     searchBarContainer: {
         flexDirection: 'row',
         alignItems: 'center',
         borderRadius: 10,
-        // borderWidth: 1,
         height: 42,
         paddingHorizontal: 12,
-        marginBottom: 28
+        marginBottom: 28,
+        marginTop: 0 // Ensure consistent spacing from top
     },
     createButton: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 4,
-        // paddingHorizontal: 12,
-        // borderTopWidth: StyleSheet.hairlineWidth,
+        marginRight: -4,
         borderRadius: 20,
         borderStyle: 'solid',
     },
     createButtonText: {
-        // marginLeft: 4,
         fontSize: 14,
         fontWeight: '500',
     },
@@ -844,17 +879,13 @@ const styles = StyleSheet.create({
     routineCard: {
         flexDirection: 'row',
         alignItems: 'center',
-        // borderRadius: 12,
-        // marginBottom: 10,
         paddingVertical: SPACING.pageHorizontalInside,
-        // paddingHorizontal: SPACING.pageHorizontalInside,
         borderTopColor: 'rgba(100, 100, 100, 0.5)',
     },
     iconContainer: {
         width: 44,
         height: 44,
         borderRadius: 8,
-        // backgroundColor: 'rgba(100, 100, 100, 0.3)',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 12,
@@ -862,7 +893,7 @@ const styles = StyleSheet.create({
     routineInfo: {
         flex: 1,
         justifyContent: 'center',
-        marginRight: 8, // Add margin to prevent text from getting too close to the button
+        marginRight: 8,
     },
     routineName: {
         fontSize: 16,
@@ -896,7 +927,6 @@ const styles = StyleSheet.create({
     searchIcon: {
         marginRight: 10 + 5,
         marginLeft: 5,
-        // opacity: 0.7,
     },
     searchInput: {
         flex: 1,
@@ -950,7 +980,6 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
         marginBottom: 4,
-
     },
     clearAllText: {
         fontSize: 13,
@@ -1017,6 +1046,41 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 5,
-        zIndex: 5, // Ensure it's above the PageContainer
+        zIndex: 5,
+    },
+    tabContainer: {
+        flexDirection: 'row',
+        height: 42,
+        borderRadius: 10,
+        backgroundColor: 'rgba(100, 100, 100, 0.1)',
+        padding: 5,
+        width: '100%',
+        marginTop: 5 // Add a small top margin
+    },
+    tabButton: {
+        flex: 0.5,
+        height: 32,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginHorizontal: 0
+    },
+    activeTabButton: {
+        borderBottomWidth: 0,
+    },
+    tabText: {
+        fontSize: 16,
+        fontWeight: '400',
+    },
+    emptyRegimentContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+    },
+    emptyRegimentText: {
+        fontSize: 16,
+        textAlign: 'center',
+        opacity: 0.7,
     },
 });

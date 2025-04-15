@@ -108,7 +108,7 @@ const ExerciseSets: React.FC<ExerciseSetsProps> = ({
               {exercise.showRpe && (
                 <TouchableOpacity
                   onPress={() => setShowRpeTooltip(exercise.id)}
-                  style={{ marginLeft: 4, padding: 2 }}
+                  style={{ marginLeft: 2, padding: 4 }}
                 >
                   <HelpCircle size={14} color={textColorMuted} />
                 </TouchableOpacity>
