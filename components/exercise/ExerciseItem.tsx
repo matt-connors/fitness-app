@@ -230,7 +230,11 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
 
     // If we don't want to show the drag handle, just return the content
     if (!showDragHandle) {
-        return exerciseContent;
+        return (
+            <View style={{marginBottom: SPACING.pageHorizontalInside}} pointerEvents="box-none">
+                {exerciseContent}
+            </View>
+        );
     }
 
     // Otherwise, return the content wrapped in the drag decorator
@@ -241,6 +245,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
                     // Allow events to propagate to parent scroll view
                     evt.stopPropagation();
                 }}
+                onResponderTerminationRequest={() => true} // Allow other responders to take over
                 hitSlop={{ top: 5, bottom: 5, left: 0, right: 0 }}
                 style={({ pressed }) => ({
                     marginBottom: SPACING.pageHorizontalInside,
@@ -256,6 +261,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                         drag();
                     }}
+                    delayPressIn={200} // Increase delay to better differentiate from scrolling
                     style={{
                         flexDirection: 'row',
                         gap: SPACING.pageHorizontalInside,

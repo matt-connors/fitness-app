@@ -294,6 +294,9 @@ const ExerciseSets: React.FC<ExerciseSetsProps> = ({
             backgroundColor: contrastBackgroundColor
           }}
           onPress={() => onAddSetToExercise(exercise.id)}
+          activeOpacity={0.7}
+          delayPressIn={100}
+          hitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
         >
           <Plus size={20} color={textColor} />
           <ThemedText style={{ marginLeft: 8, fontSize: 16, fontWeight: '400', color: textColor }}>

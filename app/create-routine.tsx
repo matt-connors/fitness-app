@@ -391,9 +391,9 @@ export default function CreateRoutineScreen() {
             </ThemedSection>
 
             {/* Exercises Section Header */}
-            <View style={styles.exercisesSection}>
+            {/* <View style={styles.exercisesSection}>
                 <ThemedText style={styles.sectionHeader}>Exercises</ThemedText>
-            </View>
+            </View> */}
         </View>
     );
 
@@ -419,14 +419,18 @@ export default function CreateRoutineScreen() {
     // Render an empty state component when there are no exercises
     const EmptyList = () => (
         <View style={{
-            height: SPACING.pageHorizontalInside
+            paddingTop: 8,
+            paddingBottom: SPACING.pageHorizontalInside
         }}>
+            <View style={styles.exercisesSection}>
+                <ThemedText style={styles.sectionHeader}>Exercises</ThemedText>
+            </View>
         </View>
     );
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-            <ThemedView style={[styles.container, { overflow: 'visible' }]}>
+            <ThemedView style={[styles.container, { overflow: 'hidden' }]}>
                 {/* Hide the default header */}
                 <Stack.Screen
                     options={{
@@ -452,7 +456,7 @@ export default function CreateRoutineScreen() {
                     styles.content,
                     {
                         paddingHorizontal: SPACING.pageHorizontal,
-                        paddingTop: insets.top + 60 + 12 // Match PageContainer's top padding calculation
+                        paddingTop: insets.top + 35
                     }
                 ]}>
                     <DraggableFlatList
@@ -464,15 +468,21 @@ export default function CreateRoutineScreen() {
                         ListFooterComponent={ListFooter}
                         ListEmptyComponent={EmptyList}
                         showsVerticalScrollIndicator={false}
-                        scrollEventThrottle={16}
+                        scrollEventThrottle={8}
                         keyboardShouldPersistTaps="handled"
                         scrollEnabled={true}
-                        activationDistance={5}
-                        dragHitSlop={{ top: 0, bottom: 0, left: 0, right: 0 }}
-                        dragItemOverflow={false}
-                        autoscrollThreshold={100}
+                        activationDistance={10}
+                        dragHitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
+                        dragItemOverflow={true}
+                        autoscrollThreshold={80}
+                        simultaneousHandlers={[]}
+                        maxToRenderPerBatch={5}
+                        windowSize={10}
+                        removeClippedSubviews={false}
+                        updateCellsBatchingPeriod={50}
+                        onScroll={() => {}}
                         contentContainerStyle={{
-                            paddingBottom: insets.bottom + 80 // Extra padding for bottom button
+                            paddingBottom: insets.bottom + 80
                         }}
                     />
                 </View>
@@ -482,22 +492,22 @@ export default function CreateRoutineScreen() {
                     styles.bottomButtonContainer,
                     {
                         paddingBottom: insets.bottom + 15,
-                        backgroundColor: 'transparent', // Make the container transparent
+                        backgroundColor: 'transparent',
                     }
                 ]}
-                pointerEvents="box-none" // Allow touch events to pass through except for its visible children
+                pointerEvents="box-none"
                 >
                     <LinearGradient
                         colors={[backgroundColor, 'transparent']}
                         style={styles.gradientBackground}
                         start={{ x: 0.5, y: 1 }}
                         end={{ x: 0.5, y: 0 }}
-                        pointerEvents="none" // Allow touch events to pass through the gradient
+                        pointerEvents="none"
                     />
                     <PlatformPressable
                         onPress={handleSave}
                         style={[styles.saveButton, { backgroundColor: accentColor }]}
-                        pointerEvents="auto" // Explicitly make sure the button receives touch events
+                        pointerEvents="auto"
                     >
                         <Check size={24} color={accentTextColor} />
                         <ThemedText style={[styles.saveButtonText, { color: accentTextColor }]}>Save Routine</ThemedText>
@@ -517,7 +527,8 @@ const styles = StyleSheet.create({
         marginTop: 26,
     },
     nameSection: {
-        marginBottom: 24,
+        marginTop: 24,
+        marginBottom: SPACING.pageHorizontalInside,
     },
     routineNameInput: {
         fontSize: 16,
@@ -537,7 +548,7 @@ const styles = StyleSheet.create({
         marginLeft: SPACING.pageHorizontalInside,
     },
     exercisesSection: {
-        marginTop: 14,
+        // marginTop: 14,
     },
     sectionHeader: {
         fontSize: 13,
@@ -578,15 +589,15 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 5,
-        zIndex: 5, // Ensure it's above other content
+        zIndex: 5,
     },
     gradientBackground: {
         position: 'absolute',
         left: 0,
         right: 0,
-        top: -100, // Extend gradient up 100 points
+        top: -100,
         bottom: 0,
-        zIndex: -1, // Behind the button
+        zIndex: -1,
     },
     saveButton: {
         flexDirection: 'row',
