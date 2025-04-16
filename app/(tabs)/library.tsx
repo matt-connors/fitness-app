@@ -578,57 +578,54 @@ export default function LibraryScreen() {
         setActiveTab(tab);
     };
 
-    // Create tab component for the header
-    const tabComponent = (
-        <View style={[styles.tabContainer]}>
-            <TouchableOpacity 
-                style={[
-                    styles.tabButton, 
-                    activeTab === 'routines' && [styles.activeTabButton, { backgroundColor: contrastBackgroundColor }]
-                ]}
-                onPress={() => handleTabChange('routines')}
-            >
-                <ThemedText style={[
-                    styles.tabText, 
-                    { color: activeTab === 'routines' ? textColor : textColorMuted }
-                ]}>
-                    Routines
-                </ThemedText>
-            </TouchableOpacity>
-            <TouchableOpacity 
-                style={[
-                    styles.tabButton, 
-                    activeTab === 'regiments' && [styles.activeTabButton, { backgroundColor: contrastBackgroundColor }]
-                ]}
-                onPress={() => handleTabChange('regiments')}
-            >
-                <ThemedText style={[
-                    styles.tabText, 
-                    { color: activeTab === 'regiments' ? textColor : textColorMuted }
-                ]}>
-                    Regiments
-                </ThemedText>
-            </TouchableOpacity>
-        </View>
-    );
-
     return (
         <ThemedView style={styles.screen}>
             <StandardHeader
                 title="Program Library"
                 rightContent={createButton}
-                additionalContent={tabComponent}
             />
 
             <PageContainer
                 hasHeader={true}
-                style={[styles.container, { paddingTop: 26 }]}
+                style={styles.container}
             >
                 <View style={styles.contentContainer}>
+                    {/* Tab switcher */}
+                    <View style={[styles.tabContainer]}>
+                        <TouchableOpacity 
+                            style={[
+                                styles.tabButton, 
+                                activeTab === 'routines' && [styles.activeTabButton, { backgroundColor: contrastBackgroundColor }]
+                            ]}
+                            onPress={() => handleTabChange('routines')}
+                        >
+                            <ThemedText style={[
+                                styles.tabText, 
+                                { color: activeTab === 'routines' ? textColor : textColorMuted }
+                            ]}>
+                                Routines
+                            </ThemedText>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[
+                                styles.tabButton, 
+                                activeTab === 'regiments' && [styles.activeTabButton, { backgroundColor: contrastBackgroundColor }]
+                            ]}
+                            onPress={() => handleTabChange('regiments')}
+                        >
+                            <ThemedText style={[
+                                styles.tabText, 
+                                { color: activeTab === 'regiments' ? textColor : textColorMuted }
+                            ]}>
+                                Regiments
+                            </ThemedText>
+                        </TouchableOpacity>
+                    </View>
+
                     {/* Render content based on active tab */}
                     {activeTab === 'routines' ? (
                         <>
-                            {/* Search bar in main content */}
+                            {/* Search bar now in main content */}
                             <TouchableOpacity
                                 style={[styles.searchBarContainer, { backgroundColor: contrastBackgroundColor, borderColor }]}
                                 onPress={() => showSearchOverlay(true)}
@@ -840,7 +837,7 @@ const styles = StyleSheet.create({
     },
     contentContainer: {
         flex: 1,
-        paddingTop: 0 // Remove top padding since the tabs are now in the header
+        paddingTop: SPACING.pageHorizontal
     },
     scrollContainer: {
         flex: 1,
@@ -851,8 +848,7 @@ const styles = StyleSheet.create({
         borderRadius: 10,
         height: 42,
         paddingHorizontal: 12,
-        marginBottom: 28,
-        marginTop: 0 // Ensure consistent spacing from top
+        marginBottom: 28
     },
     createButton: {
         flexDirection: 'row',
@@ -1050,12 +1046,13 @@ const styles = StyleSheet.create({
     },
     tabContainer: {
         flexDirection: 'row',
+        marginBottom: SPACING.pageHorizontal,
+        // marginHorizontal: SPACING.pageHorizontal,
+        // width: '100%',
         height: 42,
         borderRadius: 10,
         backgroundColor: 'rgba(100, 100, 100, 0.1)',
-        padding: 5,
-        width: '100%',
-        marginTop: 5 // Add a small top margin
+        padding: 5
     },
     tabButton: {
         flex: 0.5,
