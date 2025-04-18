@@ -7,6 +7,7 @@ export interface Exercise {
   reps?: number;
   restPause?: number;
   rpe?: number;
+  rir?: number;
   tempo?: number;
   weight?: number;
   showExpanded?: boolean;
@@ -17,6 +18,7 @@ export interface Exercise {
     reps?: number;
     restPause?: number;
     rpe?: number;
+    rir?: number;
     tempo?: number;
     weight?: number;
     showExpanded?: boolean;

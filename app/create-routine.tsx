@@ -36,6 +36,7 @@ export default function CreateRoutineScreen() {
     const [isLoading, setIsLoading] = useState(false);
     const [routineNameError, setRoutineNameError] = useState(false);
     const [showRpeTooltip, setShowRpeTooltip] = useState<string | null>(null);
+    const [showRirTooltip, setShowRirTooltip] = useState<string | null>(null);
 
     // Theme colors
     const textColor = useThemeColor('text');
@@ -212,6 +213,57 @@ export default function CreateRoutineScreen() {
         );
     };
 
+    // Add function to remove a set from an exercise (for swipe to delete)
+    const removeSetFromExercise = (exerciseId: string, setIndex: number) => {
+        setExercises(
+            exercises.map(exercise => {
+                if (exercise.id === exerciseId && exercise.multipleSets) {
+                    // If this is the last set, switch to all sets equal mode instead of preventing deletion
+                    if (exercise.multipleSets.length <= 1) {
+                        // Create a default single set mode from the last remaining set
+                        return {
+                            ...exercise,
+                            allSetsEqual: true, // Switch back to all sets equal mode
+                            sets: undefined, // Set to undefined instead of 1
+                            reps: exercise.multipleSets[0].reps,
+                            restPause: exercise.multipleSets[0].restPause,
+                            rpe: exercise.multipleSets[0].rpe,
+                            rir: exercise.multipleSets[0].rir,
+                            tempo: exercise.multipleSets[0].tempo,
+                            weight: exercise.multipleSets[0].weight,
+                            // Keep the same sets array with just one set
+                            multipleSets: [{
+                                setNumber: 1,
+                                reps: exercise.multipleSets[0].reps,
+                                restPause: exercise.multipleSets[0].restPause,
+                                rpe: exercise.multipleSets[0].rpe,
+                                rir: exercise.multipleSets[0].rir,
+                                tempo: exercise.multipleSets[0].tempo,
+                                weight: exercise.multipleSets[0].weight,
+                                showExpanded: false
+                            }]
+                        };
+                    }
+                    
+                    // Remove the set at the specified index
+                    const updatedSets = [...exercise.multipleSets];
+                    updatedSets.splice(setIndex, 1);
+                    
+                    // Renumber the remaining sets
+                    updatedSets.forEach((set, idx) => {
+                        set.setNumber = idx + 1;
+                    });
+                    
+                    // Play haptic feedback when a set is removed
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    
+                    return { ...exercise, multipleSets: updatedSets };
+                }
+                return exercise;
+            })
+        );
+    };
+
     // Add function to update a specific set
     const updateSet = (exerciseId: string, setIndex: number, field: string, value: string | number) => {
         setExercises(
@@ -365,7 +417,9 @@ export default function CreateRoutineScreen() {
                     setFilteredExercises={setFilteredExercises}
                     selectExercise={selectExercise}
                     setShowRpeTooltip={setShowRpeTooltip}
+                    setShowRirTooltip={setShowRirTooltip}
                     showDragHandle={false} // New prop to hide the drag handle in the component
+                    onRemoveSet={removeSetFromExercise}
                 />
             </View>
         );
@@ -451,6 +505,14 @@ export default function CreateRoutineScreen() {
                 <RpeTooltip
                     visible={showRpeTooltip !== null}
                     onClose={() => setShowRpeTooltip(null)}
+                    type="rpe"
+                />
+
+                {/* RIR Info Tooltip */}
+                <RpeTooltip
+                    visible={showRirTooltip !== null}
+                    onClose={() => setShowRirTooltip(null)}
+                    type="rir"
                 />
 
                 {/* Direct container instead of PageContainer */}

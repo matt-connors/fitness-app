@@ -7,13 +7,20 @@ import { useThemeColor } from '@/hooks/useThemeColor';
 interface RpeTooltipProps {
   visible: boolean;
   onClose: () => void;
+  type?: 'rpe' | 'rir';
 }
 
-const RpeTooltip: React.FC<RpeTooltipProps> = ({ visible, onClose }) => {
+const RpeTooltip: React.FC<RpeTooltipProps> = ({ visible, onClose, type = 'rpe' }) => {
   const tooltipBg = useThemeColor('backgroundContrast');
   const textColor = useThemeColor('text');
 
   if (!visible) return null;
+
+  const isRpe = type === 'rpe';
+  const title = isRpe ? 'Rate of Perceived Exertion (RPE)' : 'Reps in Reserve (RIR)';
+  const description = isRpe 
+    ? 'RPE is a scale from 1-10 that measures how difficult an exercise feels.'
+    : 'RIR measures how many more reps you could have done at the end of a set.';
 
   return (
     <Modal
@@ -40,26 +47,45 @@ const RpeTooltip: React.FC<RpeTooltipProps> = ({ visible, onClose }) => {
           maxWidth: 300,
         }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-            <ThemedText style={{ fontWeight: '600', fontSize: 16 }}>Rate of Perceived Exertion (RPE)</ThemedText>
+            <ThemedText style={{ fontWeight: '600', fontSize: 16 }}>{title}</ThemedText>
             <TouchableOpacity onPress={onClose}>
               <X size={20} color={textColor} />
             </TouchableOpacity>
           </View>
           <ThemedText style={{ marginBottom: 8 }}>
-            RPE is a scale from 1-10 that measures how difficult an exercise feels.
+            {description}
           </ThemedText>
-          <ThemedText>
-            • 10 = Maximum effort (couldn't do more reps)
-          </ThemedText>
-          <ThemedText>
-            • 7-9 = Hard but manageable
-          </ThemedText>
-          <ThemedText>
-            • 4-6 = Moderate effort
-          </ThemedText>
-          <ThemedText>
-            • 1-3 = Very easy
-          </ThemedText>
+          {isRpe ? (
+            <>
+              <ThemedText>
+                • 10 = Maximum effort (couldn't do more reps)
+              </ThemedText>
+              <ThemedText>
+                • 7-9 = Hard but manageable
+              </ThemedText>
+              <ThemedText>
+                • 4-6 = Moderate effort
+              </ThemedText>
+              <ThemedText>
+                • 1-3 = Very easy
+              </ThemedText>
+            </>
+          ) : (
+            <>
+              <ThemedText>
+                • 0 = Couldn't do any more reps (max effort)
+              </ThemedText>
+              <ThemedText>
+                • 1-2 = Could have done 1-2 more reps
+              </ThemedText>
+              <ThemedText>
+                • 3-5 = Several more reps in the tank
+              </ThemedText>
+              <ThemedText>
+                • 6+ = Many more reps possible (very easy)
+              </ThemedText>
+            </>
+          )}
         </View>
       </TouchableOpacity>
     </Modal>

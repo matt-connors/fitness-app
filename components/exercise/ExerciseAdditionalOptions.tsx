@@ -1,18 +1,21 @@
 import React from 'react';
-import { View, TextInput } from 'react-native';
+import { View, TextInput, TouchableOpacity } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { SPACING } from '@/constants/Spacing';
 import { Exercise } from '@/types/Exercise';
+import { HelpCircle } from 'lucide-react-native';
 
 interface ExerciseAdditionalOptionsProps {
   exercise: Exercise;
   onUpdateExercise: (id: string, field: string, value: string | number) => void;
+  setShowRirTooltip?: (id: string | null) => void;
 }
 
 const ExerciseAdditionalOptions: React.FC<ExerciseAdditionalOptionsProps> = ({
   exercise,
-  onUpdateExercise
+  onUpdateExercise,
+  setShowRirTooltip
 }) => {
   // Theme colors
   const textColor = useThemeColor('text');
@@ -56,16 +59,21 @@ const ExerciseAdditionalOptions: React.FC<ExerciseAdditionalOptionsProps> = ({
           />
         </View>
 
-        {/* Tempo Input */}
+        {/* RIR Input */}
         <View style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           gap: 5,
         }}>
-          <ThemedText style={{ fontSize: 13, fontWeight: '500', color: textColorMuted }}>
-            Tempo (sec)
-          </ThemedText>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <ThemedText style={{ fontSize: 13, fontWeight: '500', color: textColorMuted, marginRight: 4 }}>
+              RIR
+            </ThemedText>
+            <TouchableOpacity onPress={() => setShowRirTooltip && setShowRirTooltip(exercise.id)}>
+              <HelpCircle size={14} color={textColorMuted} strokeWidth={1.7} />
+            </TouchableOpacity>
+          </View>
           <TextInput
             style={{
               borderWidth: 1,
@@ -79,8 +87,8 @@ const ExerciseAdditionalOptions: React.FC<ExerciseAdditionalOptionsProps> = ({
             keyboardType="number-pad"
             placeholder="Any"
             placeholderTextColor={textColorMuted}
-            value={exercise.tempo?.toString() || ''}
-            onChangeText={(value) => onUpdateExercise(exercise.id, 'tempo', parseInt(value) || 0)}
+            value={exercise.rir?.toString() || ''}
+            onChangeText={(value) => onUpdateExercise(exercise.id, 'rir', parseInt(value) || 0)}
           />
         </View>
       </View>

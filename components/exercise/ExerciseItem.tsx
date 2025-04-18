@@ -32,7 +32,9 @@ interface ExerciseItemProps {
     setFilteredExercises: (exercises: any[]) => void;
     selectExercise: (exerciseId: string, selectedExercise: any) => void;
     setShowRpeTooltip: (id: string | null) => void;
+    setShowRirTooltip: (id: string | null) => void;
     showDragHandle?: boolean;
+    onRemoveSet: (exerciseId: string, setIndex: number) => void;
 }
 
 const ExerciseItem: React.FC<ExerciseItemProps> = ({
@@ -55,7 +57,9 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
     setFilteredExercises,
     selectExercise,
     setShowRpeTooltip,
-    showDragHandle = true
+    setShowRirTooltip,
+    showDragHandle = true,
+    onRemoveSet
 }) => {
     // Theme colors
     const textColor = useThemeColor('text');
@@ -187,6 +191,8 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
                 onUpdateSet={onUpdateSet}
                 onAddSetToExercise={onAddSetToExercise}
                 setShowRpeTooltip={setShowRpeTooltip}
+                setShowRirTooltip={setShowRirTooltip}
+                onRemoveSet={onRemoveSet}
             />
 
             {/* Expand/collapse button for additional options */}
@@ -223,6 +229,7 @@ const ExerciseItem: React.FC<ExerciseItemProps> = ({
                 <ExerciseAdditionalOptions
                     exercise={item}
                     onUpdateExercise={onUpdateExercise}
+                    setShowRirTooltip={setShowRirTooltip}
                 />
             )}
         </ThemedSection>
