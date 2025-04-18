@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TextInput, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, TextInput, ScrollView, TouchableOpacity, GestureResponderEvent, PanResponder } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { PlatformPressable } from '@react-navigation/elements';
@@ -352,16 +352,16 @@ export default function CreateRoutineScreen() {
                 {/* Drag handle as a separate component */}
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TouchableOpacity
-                        onPressIn={(e) => {
-                            e.stopPropagation();
+                        onLongPress={() => {
                             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                            // Let the DraggableFlatList handle all the drag logic
                             drag();
                         }}
+                        delayLongPress={200}
                         style={{
                             flexDirection: 'row',
                             gap: SPACING.pageHorizontalInside,
                             alignItems: 'center',
-                            // marginBottom: SPACING.pageHorizontalInside,
                             padding: SPACING.pageHorizontalInside,
                             paddingVertical: SPACING.pageHorizontalInside * 1.3,
                             borderRadius: 8,
@@ -369,9 +369,7 @@ export default function CreateRoutineScreen() {
                             opacity: isActive ? 0.7 : 1,
                             flex: 1
                         }}
-                        delayLongPress={100}
                         activeOpacity={0.7}
-                        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
                         <GripVertical
                             size={18}
@@ -387,7 +385,6 @@ export default function CreateRoutineScreen() {
                             alignItems: 'center',
                             justifyContent: 'center',
                             borderRadius: 10,
-                            // backgroundColor: contrastBackgroundColor
                         }}
                         onPress={() => removeExercise(item.id)}
                         hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
@@ -535,16 +532,15 @@ export default function CreateRoutineScreen() {
                         scrollEventThrottle={8}
                         keyboardShouldPersistTaps="handled"
                         scrollEnabled={true}
-                        activationDistance={10}
-                        dragHitSlop={{ top: 5, bottom: 5, left: 5, right: 5 }}
-                        dragItemOverflow={true}
-                        autoscrollThreshold={80}
+                        activationDistance={0}
+                        dragHitSlop={{ top: 0, bottom: 0, left: 0, right: 0 }}
+                        dragItemOverflow={false}
+                        autoscrollThreshold={100}
                         simultaneousHandlers={[]}
                         maxToRenderPerBatch={5}
                         windowSize={10}
                         removeClippedSubviews={false}
                         updateCellsBatchingPeriod={50}
-                        onScroll={() => {}}
                         contentContainerStyle={{
                             paddingBottom: insets.bottom + 80
                         }}
