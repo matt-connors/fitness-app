@@ -31,4 +31,6 @@ export interface RoutineData {
   type?: string;
   date?: string;
   duration?: string;
+  exercises?: Exercise[];
+  source?: string;
 } 

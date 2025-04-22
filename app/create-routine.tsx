@@ -19,12 +19,20 @@ import { Exercise, RoutineData } from '@/types/Exercise';
 import ExerciseItem from '@/components/exercise/ExerciseItem';
 import RpeTooltip from '@/components/exercise/RpeTooltip';
 import { LinearGradient } from 'expo-linear-gradient';
+import { RECENT_ROUTINES, USER_CREATED_WORKOUTS, INITIAL_PLATFORM_WORKOUTS } from '@/constants/MockData';
 
 export default function CreateRoutineScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const insets = useSafeAreaInsets();
-    const routineData = params.workout ? JSON.parse(decodeURIComponent(String(params.workout))) as RoutineData : null;
+    
+    // Use a ref to track if we've initialized the data
+    const hasInitialized = useRef(false);
+    const routineDataRef = useRef<RoutineData | null>(null);
+    
+    // Check if we're in edit mode
+    const isEditMode = params.mode === 'edit';
+    const workoutId = params.workoutId as string | undefined;
 
     // State management
     const [routineName, setRoutineName] = useState('');
@@ -64,31 +72,47 @@ export default function CreateRoutineScreen() {
         loadExercises();
     }, []);
 
-    // Initialize with data if available
+    // Load workout data based on ID if provided
     useEffect(() => {
-        if (routineData) {
-            setRoutineName(routineData.name || '');
-            // If this was a real app, we'd load exercises for this routine
-            // For now, we'll just create a few placeholder exercises
-            if (routineData.type === 'Strength') {
-                setExercises([
-                    { id: '1', name: 'Bench Press', sets: 3, reps: 10, allSetsEqual: true, showRpe: true, rpe: 7, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 10, restPause: 60, rpe: 7, tempo: 0, weight: 135, showExpanded: false }] },
-                    { id: '2', name: 'Squats', sets: 4, reps: 8, allSetsEqual: true, showRpe: true, rpe: 8, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 8, restPause: 90, rpe: 8, tempo: 0, weight: 185, showExpanded: false }] },
-                    { id: '3', name: 'Deadlifts', sets: 3, reps: 6, allSetsEqual: true, showRpe: true, rpe: 9, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 6, restPause: 120, rpe: 9, tempo: 0, weight: 225, showExpanded: false }] }
-                ]);
-            } else if (routineData.type === 'Cardio') {
-                setExercises([
-                    { id: '1', name: 'Sprints', sets: 6, reps: 30, allSetsEqual: true, showRpe: true, rpe: 7, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 30, restPause: 30, rpe: 7, tempo: 0, weight: 0, showExpanded: false }] },
-                    { id: '2', name: 'Jump Rope', sets: 3, reps: 60, allSetsEqual: true, showRpe: true, rpe: 6, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 60, restPause: 45, rpe: 6, tempo: 0, weight: 0, showExpanded: false }] }
-                ]);
-            } else if (routineData.type === 'Core') {
-                setExercises([
-                    { id: '1', name: 'Crunches', sets: 3, reps: 15, allSetsEqual: true, showRpe: true, rpe: 6, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 15, restPause: 30, rpe: 6, tempo: 0, weight: 0, showExpanded: false }] },
-                    { id: '2', name: 'Planks', sets: 3, reps: 45, allSetsEqual: true, showRpe: true, rpe: 8, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 45, restPause: 30, rpe: 8, tempo: 0, weight: 0, showExpanded: false }] }
-                ]);
+        if (hasInitialized.current) return;
+        
+        if (workoutId) {
+            // In a real app, you would fetch this data from a database or API
+            // For now, we'll search through our mock data
+            let workout = [...USER_CREATED_WORKOUTS, ...RECENT_ROUTINES, ...INITIAL_PLATFORM_WORKOUTS]
+                .find(w => w.id === workoutId);
+                
+            if (workout) {
+                routineDataRef.current = workout;
+                setRoutineName(workout.name || '');
+                
+                // If workout has exercises array, use that directly
+                if (workout.exercises && Array.isArray(workout.exercises)) {
+                    setExercises(workout.exercises);
+                } 
+                // Otherwise fall back to the demo data logic
+                else if (workout.type === 'Strength') {
+                    setExercises([
+                        { id: '1', name: 'Bench Press', sets: 3, reps: 10, allSetsEqual: true, showRpe: true, rpe: 7, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 10, restPause: 60, rpe: 7, tempo: 0, weight: 135, showExpanded: false }] },
+                        { id: '2', name: 'Squats', sets: 4, reps: 8, allSetsEqual: true, showRpe: true, rpe: 8, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 8, restPause: 90, rpe: 8, tempo: 0, weight: 185, showExpanded: false }] },
+                        { id: '3', name: 'Deadlifts', sets: 3, reps: 6, allSetsEqual: true, showRpe: true, rpe: 9, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 6, restPause: 120, rpe: 9, tempo: 0, weight: 225, showExpanded: false }] }
+                    ]);
+                } else if (workout.type === 'Cardio') {
+                    setExercises([
+                        { id: '1', name: 'Sprints', sets: 6, reps: 30, allSetsEqual: true, showRpe: true, rpe: 7, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 30, restPause: 30, rpe: 7, tempo: 0, weight: 0, showExpanded: false }] },
+                        { id: '2', name: 'Jump Rope', sets: 3, reps: 60, allSetsEqual: true, showRpe: true, rpe: 6, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 60, restPause: 45, rpe: 6, tempo: 0, weight: 0, showExpanded: false }] }
+                    ]);
+                } else if (workout.type === 'Core') {
+                    setExercises([
+                        { id: '1', name: 'Crunches', sets: 3, reps: 15, allSetsEqual: true, showRpe: true, rpe: 6, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 15, restPause: 30, rpe: 6, tempo: 0, weight: 0, showExpanded: false }] },
+                        { id: '2', name: 'Planks', sets: 3, reps: 45, allSetsEqual: true, showRpe: true, rpe: 8, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 45, restPause: 30, rpe: 8, tempo: 0, weight: 0, showExpanded: false }] }
+                    ]);
+                }
             }
         }
-    }, [routineData]);
+        
+        hasInitialized.current = true;
+    }, [workoutId]);
 
     // Handle search query changes - use debounce for better performance
     useEffect(() => {
@@ -317,7 +341,19 @@ export default function CreateRoutineScreen() {
             return;
         }
 
-        // Save routine logic would go here
+        // Prepare the routine data to save
+        const routineToSave = {
+            id: routineDataRef.current?.id || Date.now().toString(),
+            name: routineName,
+            type: routineDataRef.current?.type || 'Strength', // Default to Strength if not specified
+            exercises: exercises,
+            source: 'user',
+        };
+        
+        // In a real app, you would save this to a database or state store
+        console.log('Saving routine:', routineToSave);
+
+        // Navigate back to the previous screen
         router.back();
     };
 
@@ -492,9 +528,9 @@ export default function CreateRoutineScreen() {
                     }}
                 />
 
-                {/* Use StandardHeader component */}
+                {/* Use StandardHeader component with dynamic title based on edit/create mode */}
                 <StandardHeader
-                    title={routineData ? "Edit Routine" : "Create Routine"}
+                    title={isEditMode ? "Edit Routine" : "Create Routine"}
                     rightContent={closeButton}
                 />
 
@@ -570,7 +606,9 @@ export default function CreateRoutineScreen() {
                         pointerEvents="auto"
                     >
                         <Check size={24} color={accentTextColor} />
-                        <ThemedText style={[styles.saveButtonText, { color: accentTextColor }]}>Save Routine</ThemedText>
+                        <ThemedText style={[styles.saveButtonText, { color: accentTextColor }]}>
+                            {isEditMode ? "Update Routine" : "Save Routine"}
+                        </ThemedText>
                     </PlatformPressable>
                 </View>
             </ThemedView>

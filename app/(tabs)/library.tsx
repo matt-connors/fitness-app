@@ -6,80 +6,13 @@ import { ThemedView } from '@/components/ThemedView';
 import { PlatformPressable } from '@react-navigation/elements';
 import { SPACING } from '@/constants/Spacing';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { PlusCircle, Search, X, Star, User, BookOpen, Clock, Trash2, Plus, History, BicepsFlexed } from 'lucide-react-native';
+import { PlusCircle, Search, X, Star, User, BookOpen, Clock, Trash2, Plus, History, BicepsFlexed, MoreVertical } from 'lucide-react-native';
 import { StandardHeader } from '@/components/ui/StandardHeader';
 import { PageContainer } from '@/components/PageContainer';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemedSection } from '@/components/ThemedSection';
-
-// Mock data for different sections
-const RECENT_ROUTINES = [
-    { id: 'r1', name: 'Full Body Strength', type: 'Strength', exercises: 12, duration: '45 min', lastUsed: '3 days ago', source: 'user' },
-    { id: 'r2', name: 'HIIT Cardio', type: 'Cardio', exercises: null, duration: '30 min', lastUsed: '1 week ago', source: 'platform' },
-];
-
-const USER_CREATED_WORKOUTS = [
-    { id: 'u1', name: 'Full Body Strength', type: 'Strength', exercises: 12, duration: '45 min', source: 'user' },
-    { id: 'u2', name: 'Upper/Lower Split', type: 'Strength', exercises: 8, duration: '40 min', source: 'user' },
-    { id: 'u3', name: 'Push/Pull/Legs', type: 'Strength', exercises: 15, duration: '50 min', source: 'user' },
-    { id: 'u4', name: 'Yoga Flow', type: 'Flexibility', exercises: null, duration: '35 min', source: 'user' },
-];
-
-// Generate platform workouts for pagination testing
-const generatePlatformWorkouts = (count: number, startIndex: number = 0) => {
-    const types = ['Strength', 'Cardio', 'Flexibility', 'Yoga', 'CrossFit', 'HIIT', 'Program'];
-    const difficulties = ['Beginner', 'Intermediate', 'Advanced', 'All Levels'];
-    const baseWorkouts = [
-        { name: 'Beginner Strength', type: 'Strength', category: 'Strength' },
-        { name: 'HIIT Cardio Blast', type: 'Cardio', category: 'Cardio' },
-        { name: 'Advanced Yoga Flow', type: 'Flexibility', category: 'Yoga' },
-        { name: 'Core Crusher', type: 'Strength', category: 'Core' },
-        { name: '30-Day Transformation', type: 'Program', category: 'Program' },
-        { name: 'CrossFit WOD', type: 'CrossFit', category: 'CrossFit' },
-        { name: 'Full Body Burn', type: 'HIIT', category: 'HIIT' },
-        { name: 'Mobility Flow', type: 'Flexibility', category: 'Mobility' },
-        { name: 'Leg Day', type: 'Strength', category: 'Legs' },
-        { name: 'Upper Body Focus', type: 'Strength', category: 'Upper Body' },
-    ];
-
-    return Array.from({ length: count }).map((_, i) => {
-        const index = i + startIndex;
-        const base = baseWorkouts[index % baseWorkouts.length];
-        const workoutNumber = Math.floor(index / baseWorkouts.length) + 1;
-        return {
-            id: `platform_${index + 1}_${Date.now()}`,  // Ensure globally unique IDs by adding timestamp
-            name: `${base.name}${workoutNumber > 1 ? ' ' + workoutNumber : ''}`,
-            type: base.type,
-            exercises: Math.floor(Math.random() * 15) + 5,
-            duration: `${Math.floor(Math.random() * 40) + 15} min`,
-            difficulty: difficulties[Math.floor(Math.random() * difficulties.length)],
-            category: base.category,
-            source: 'platform'
-        };
-    });
-};
-
-// Initial set of platform workouts (equivalent to first page)
-const INITIAL_PLATFORM_WORKOUTS = generatePlatformWorkouts(10, 0);
-
-// Mock data for recent searches
-const RECENT_SEARCHES = [
-    { id: 's1', query: 'Full Body', timestamp: '2023-09-15T12:30:00Z' },
-    { id: 's2', query: 'HIIT', timestamp: '2023-09-14T10:15:00Z' },
-    { id: 's3', query: 'Strength Training', timestamp: '2023-09-12T08:45:00Z' },
-];
-
-// Workout types for chips
-const WORKOUT_TYPES = [
-    { id: 'all', name: 'All' },
-    { id: 'strength', name: 'Strength' },
-    { id: 'cardio', name: 'Cardio' },
-    { id: 'flexibility', name: 'Flexibility' },
-    { id: 'yoga', name: 'Yoga' },
-    { id: 'crossfit', name: 'CrossFit' },
-    { id: 'hiit', name: 'HIIT' },
-    { id: 'program', name: 'Program' },
-];
+import { ActionSheet, ActionSheetOption } from '@/components/ui/ActionSheet';
+import { RECENT_ROUTINES, USER_CREATED_WORKOUTS, INITIAL_PLATFORM_WORKOUTS, RECENT_SEARCHES, WORKOUT_TYPES, generatePlatformWorkouts } from '@/constants/MockData';
 
 // Custom debounce implementation
 function debounce<T extends (...args: any[]) => any>(
@@ -109,6 +42,27 @@ export default function LibraryScreen() {
 
     // State to track if "All" is explicitly selected - set to true by default
     const [isAllChipSelected, setIsAllChipSelected] = useState(true);
+
+    // State for menu management
+    const [menuVisible, setMenuVisible] = useState(false);
+    const [selectedWorkout, setSelectedWorkout] = useState<any>(null);
+    
+    // Ref to store the pending action to execute after modal closes
+    const pendingActionRef = useRef<(() => void) | null>(null);
+    
+    // Effect to execute pending action when modal is closed
+    // useEffect(() => {
+    //     if (!menuVisible && pendingActionRef.current) {
+    //         // Execute the pending action
+    //         const action = pendingActionRef.current;
+    //         // Clear the ref immediately
+    //         pendingActionRef.current = null;
+    //         // Execute with delay to avoid update during render
+    //         setTimeout(() => {
+    //             action();
+    //         }, 50);
+    //     }
+    // }, [menuVisible]);
 
     // Derived search state
     const hasSearchQuery = searchQuery.length > 0;
@@ -149,6 +103,7 @@ export default function LibraryScreen() {
     const inputBgColor = useThemeColor('background');
     const overlayBgColor = useThemeColor('background');
     const contrastBackgroundColor = useThemeColor('backgroundContrast');
+    const menuBackgroundColor = useThemeColor('backgroundContrast');
 
     // Calculate the header height including insets
     const headerHeight = SPACING.headerHeight + insets.top;
@@ -157,12 +112,27 @@ export default function LibraryScreen() {
         router.push('/create-routine');
     };
 
-    const handleRoutinePress = (routine: any) => {
-        router.push({
-            pathname: '/create-routine',
-            params: { workout: JSON.stringify(routine) }
-        });
-    };
+    // Combined function for both clicking on a routine and editing from the menu
+    const handleRoutinePress = useCallback((routine: any, editMode: boolean = false) => {
+        console.log('Opening routine:', routine.name, editMode ? '(edit mode)' : '');
+        
+        // If the menu is open, close it
+        if (menuVisible) {
+            setMenuVisible(false);
+        }
+        
+        // Wait a moment if closing menu to avoid transition issues
+        setTimeout(() => {
+            router.push({
+                pathname: '/create-routine',
+                params: { 
+                    mode: editMode ? 'edit' : undefined,
+                    // Don't pass workout JSON data - use IDs instead to avoid infinite loop
+                    workoutId: routine.id
+                }
+            });
+        }, menuVisible ? 300 : 0);
+    }, [router, menuVisible]);
 
     // Search handling
     const handleSearchChange = useCallback((text: string) => {
@@ -330,55 +300,101 @@ export default function LibraryScreen() {
         // You would implement actual saving logic here
     };
 
+    // Handle opening the menu for a workout
+    const handleOpenMenu = useCallback((workout: any) => {
+        setSelectedWorkout(workout);
+        setMenuVisible(true);
+    }, []);
+
+    // Handle removing a workout from user library
+    const handleRemoveWorkout = useCallback(() => {
+        if (selectedWorkout) {
+            const workoutName = selectedWorkout.name;
+            console.log(`Removing workout: ${workoutName} from user library`);
+            
+            // First close the modal
+            setMenuVisible(false);
+            
+            // Execute removal logic after a delay to ensure modal is closed
+            setTimeout(() => {
+                // In a real app, you'd implement the actual removal logic here
+                console.log(`Confirming removal of: ${workoutName}`);
+                setSelectedWorkout(null);
+            }, 300);
+        }
+    }, [selectedWorkout]);
+
+    // Handle editing a workout (now using the consolidated function)
+    const handleEditWorkout = useCallback(() => {
+        if (selectedWorkout) {
+            handleRoutinePress(selectedWorkout, true);
+        }
+    }, [selectedWorkout, handleRoutinePress]);
+
+    // Handle closing the menu - this doesn't trigger any other actions
+    const handleCloseMenu = useCallback(() => {
+        pendingActionRef.current = null; // Clear any pending action
+        setMenuVisible(false);
+    }, []);
+
     // Render a workout/routine card
-    const renderWorkoutCard = (item: any, index: number) => (
-        <PlatformPressable
-            key={item.id}
-            style={[styles.routineCard, {
-                borderTopWidth: index > 0 ? StyleSheet.hairlineWidth : 0,
-            }]}
-            onPress={() => handleRoutinePress(item)}
-        >
-            {/* {RECENT_ROUTINES.some(r => r.id === item.id) && (
-                <View style={[styles.iconContainer, { backgroundColor: contrastBackgroundColor }]}>
-                    <Clock size={22} color={textColorMuted} strokeWidth={1.6} />
-                </View>
-            )} */}
-
-            <View style={styles.routineInfo}>
-                <ThemedText style={styles.routineName} numberOfLines={1} ellipsizeMode="tail">
-                    {item.name}
-                </ThemedText>
-                <View style={styles.routineMetaRow}>
-                    <ThemedText style={[styles.metaText, { color: textColorSubtle }]} numberOfLines={1} ellipsizeMode="tail">
-                        {item.type}
-                        {item.exercises ? ` • ${item.exercises} exercises` : item.duration ? ` • ${item.duration}` : ''}
-                        {RECENT_ROUTINES.some(r => r.id === item.id) && item.lastUsed ? ` • ${item.lastUsed}` : ''}
-                        {item.difficulty ? ` • ${item.difficulty}` : ''}
+    const renderWorkoutCard = useCallback((item: any, index: number) => {
+        return (
+            <PlatformPressable
+                key={item.id}
+                style={[styles.routineCard, {
+                    borderTopWidth: index > 0 ? StyleSheet.hairlineWidth : 0,
+                }]}
+                onPress={() => handleRoutinePress(item)}
+            >
+                <View style={styles.routineInfo}>
+                    <ThemedText style={styles.routineName} numberOfLines={1} ellipsizeMode="tail">
+                        {item.name}
                     </ThemedText>
+                    <View style={styles.routineMetaRow}>
+                        <ThemedText style={[styles.metaText, { color: textColorSubtle }]} numberOfLines={1} ellipsizeMode="tail">
+                            {item.type}
+                            {item.exercises ? ` • ${item.exercises} exercises` : item.duration ? ` • ${item.duration}` : ''}
+                            {RECENT_ROUTINES.some(r => r.id === item.id) && item.lastUsed ? ` • ${item.lastUsed}` : ''}
+                            {item.difficulty ? ` • ${item.difficulty}` : ''}
+                        </ThemedText>
+                    </View>
                 </View>
-            </View>
 
-            {/* Action buttons with appropriate styling */}
-            {RECENT_ROUTINES.some(r => r.id === item.id) && (
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.circleButton, { backgroundColor: contrastBackgroundColor }]}
-                    onPress={() => removeFromRecentRoutines(item.id)}
-                >
-                    <X size={18} color={textColorMuted} strokeWidth={1.8} />
-                </TouchableOpacity>
-            )}
+                {/* Action buttons with appropriate styling */}
+                {RECENT_ROUTINES.some(r => r.id === item.id) && (
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.circleButton, { backgroundColor: contrastBackgroundColor }]}
+                        onPress={() => removeFromRecentRoutines(item.id)}
+                    >
+                        <X size={18} color={textColorMuted} strokeWidth={1.8} />
+                    </TouchableOpacity>
+                )}
 
-            {item.source === 'platform' && !RECENT_ROUTINES.some(r => r.id === item.id) && (
-                <TouchableOpacity
-                    style={[styles.actionButton, styles.circleButton, { backgroundColor: contrastBackgroundColor }]}
-                    onPress={() => saveToUserWorkouts(item)}
-                >
-                    <Plus size={18} color={textColorMuted} strokeWidth={1.7} />
-                </TouchableOpacity>
-            )}
-        </PlatformPressable>
-    );
+                {item.source === 'platform' && !RECENT_ROUTINES.some(r => r.id === item.id) && (
+                    <TouchableOpacity
+                        style={[styles.actionButton, styles.circleButton, { backgroundColor: contrastBackgroundColor }]}
+                        onPress={() => saveToUserWorkouts(item)}
+                    >
+                        <Plus size={18} color={textColorMuted} strokeWidth={1.7} />
+                    </TouchableOpacity>
+                )}
+
+                {/* Ellipsis menu for user-created workouts */}
+                {item.source === 'user' && (
+                    <TouchableOpacity
+                        style={[styles.actionButton]}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            handleOpenMenu(item);
+                        }}
+                    >
+                        <MoreVertical size={18} color={textColorMuted} strokeWidth={1.7} />
+                    </TouchableOpacity>
+                )}
+            </PlatformPressable>
+        );
+    }, [textColorSubtle, contrastBackgroundColor, textColorMuted, handleOpenMenu, handleRoutinePress]);
 
     const renderSearchResultItem = (item: any, type: string, index: number = 0) => (
         <TouchableOpacity
@@ -697,6 +713,23 @@ export default function LibraryScreen() {
                     )}
                 </View>
             </PageContainer>
+
+            {/* Use the standardized ActionSheet component */}
+            <ActionSheet
+                visible={menuVisible}
+                options={[
+                    {
+                        label: 'Edit Routine',
+                        onPress: handleEditWorkout,
+                    },
+                    {
+                        label: 'Remove Routine',
+                        onPress: handleRemoveWorkout,
+                        destructive: true,
+                    }
+                ]}
+                onClose={handleCloseMenu}
+            />
 
             {/* Persistent Search Overlay with opacity animation only */}
             <Animated.View
@@ -1079,5 +1112,34 @@ const styles = StyleSheet.create({
         fontSize: 16,
         textAlign: 'center',
         opacity: 0.7,
+    },
+    menuOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    menuContainer: {
+        width: '80%',
+        borderRadius: 14,
+        overflow: 'hidden',
+        elevation: 5,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    },
+    menuItem: {
+        paddingVertical: 16,
+        paddingHorizontal: 20,
+        alignItems: 'center',
+    },
+    menuText: {
+        fontSize: 16,
+        fontWeight: '400',
+    },
+    menuDivider: {
+        borderTopWidth: StyleSheet.hairlineWidth,
+        width: '100%',
     },
 });
