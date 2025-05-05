@@ -15,6 +15,7 @@ interface LibraryContentProps {
   onSearchPress: () => void;
   fetching: boolean;
   isRefreshing: boolean;
+  isUpdating: boolean;
   userRoutines: PaginatedRoutines;
   graphqlPage: number;
   renderRoutineCard: (routine: any, index: number) => JSX.Element;
@@ -33,6 +34,7 @@ export const LibraryContent = ({
   onSearchPress,
   fetching,
   isRefreshing,
+  isUpdating,
   userRoutines,
   graphqlPage,
   renderRoutineCard,
@@ -54,7 +56,7 @@ export const LibraryContent = ({
     isStale,
     fetching,
     isRefreshing,
-    shouldShowRefreshIndicator
+    isUpdating
   });
   
   // Log the first routine if available
@@ -109,7 +111,8 @@ export const LibraryContent = ({
               onCreateRoutinePress={onCreateRoutinePress}
               sectionTitle="Your Routines"
               isLoading={isUserRoutinesLoading}
-              isStale={isStale && fetching} // Only show stale indicator when actually fetching
+              isStale={isStale}
+              isUpdating={isUpdating}
             />
 
             {/* Platform Workouts Section (from mock data) */}

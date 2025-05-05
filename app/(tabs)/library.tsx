@@ -200,26 +200,54 @@ export default function LibraryScreen() {
                 style={styles.container}
                 disableScroll={true}
             >
-                <LibraryContent
-                    activeTab={activeTab}
-                    onTabChange={handleTabChange}
-                    onSearchPress={() => {
-                        const shouldFocusInput = search.showSearchOverlay(true);
-                        if (shouldFocusInput && searchInputRef.current) {
-                            searchInputRef.current.focus();
-                        }
-                    }}
-                    fetching={routines.fetching}
-                    isRefreshing={routines.isRefreshing}
-                    userRoutines={routines.userRoutines}
-                    graphqlPage={routines.graphqlPage}
-                    renderRoutineCard={renderRoutineCard}
-                    renderPlatformRoutineCard={renderPlatformRoutineCard}
-                    onCreateRoutinePress={handleCreateRoutine}
-                    allPlatformWorkouts={routines.allPlatformWorkouts}
-                    isLoadingMore={routines.isLoadingMore}
-                    onEndReached={debouncedLoadMore}
-                />
+                {search.isSearching ? (
+                    <SearchOverlay
+                        visible={search.isSearching}
+                        opacity={search.overlayOpacity}
+                        searchQuery={search.searchQuery}
+                        onSearchChange={search.handleSearchChange}
+                        onClear={() => search.setSearchQuery('')}
+                        onCancel={search.hideSearchOverlay}
+                        filterChipsData={WORKOUT_TYPES}
+                        selectedFilterId={search.selectedType}
+                        isAllChipSelected={search.isAllChipSelected}
+                        onChipPress={handleChipPress}
+                        userRoutines={userWorkouts}
+                        platformRoutines={platformWorkouts}
+                        fetching={routines.fetching}
+                        error={routines.error as Error | undefined}
+                        hasMoreRoutines={routines.hasMoreRoutines}
+                        onLoadMore={() => search.loadMoreSearchResults(routines.allPlatformWorkouts)}
+                        onRoutinePress={handleRoutinePress}
+                        onSaveToLibrary={saveToUserWorkouts}
+                        onRetry={() => routines.reexecuteRoutinesQuery({ requestPolicy: 'network-only' })}
+                        searchRef={searchInputRef}
+                        renderUserRoutineItem={({ item, index }) => renderRoutineCard(item, index)}
+                        renderPlatformRoutineItem={({ item, index }) => renderPlatformRoutineCard(item, index)}
+                    />
+                ) : (
+                    <LibraryContent
+                        activeTab={activeTab}
+                        onTabChange={handleTabChange}
+                        onSearchPress={() => {
+                            const shouldFocusInput = search.showSearchOverlay(true);
+                            if (shouldFocusInput && searchInputRef.current) {
+                                searchInputRef.current.focus();
+                            }
+                        }}
+                        fetching={routines.fetching}
+                        isRefreshing={false} // Don't use pull-to-refresh indicator
+                        isUpdating={routines.isUpdating} // New prop for updating state
+                        userRoutines={routines.userRoutines}
+                        graphqlPage={routines.graphqlPage}
+                        renderRoutineCard={renderRoutineCard}
+                        renderPlatformRoutineCard={renderPlatformRoutineCard}
+                        onCreateRoutinePress={handleCreateRoutine}
+                        allPlatformWorkouts={routines.allPlatformWorkouts}
+                        isLoadingMore={routines.isLoadingMore}
+                        onEndReached={debouncedLoadMore}
+                    />
+                )}
             </PageContainer>
 
             {/* Use the standardized ActionSheet component */}
@@ -237,32 +265,6 @@ export default function LibraryScreen() {
                     }
                 ]}
                 onClose={actionMenu.handleCloseMenu}
-            />
-
-            {/* Search Overlay */}
-            <SearchOverlay
-                visible={search.isSearching}
-                opacity={search.overlayOpacity}
-                searchQuery={search.searchQuery}
-                onSearchChange={search.handleSearchChange}
-                onClear={() => search.setSearchQuery('')}
-                onCancel={search.hideSearchOverlay}
-                filterChipsData={WORKOUT_TYPES}
-                selectedFilterId={search.selectedType}
-                isAllChipSelected={search.isAllChipSelected}
-                onChipPress={handleChipPress}
-                userRoutines={userWorkouts}
-                platformRoutines={platformWorkouts}
-                fetching={routines.fetching}
-                error={routines.error as Error | undefined}
-                hasMoreRoutines={routines.hasMoreRoutines}
-                onLoadMore={() => search.loadMoreSearchResults(routines.allPlatformWorkouts)}
-                onRoutinePress={handleRoutinePress}
-                onSaveToLibrary={saveToUserWorkouts}
-                onRetry={() => routines.reexecuteRoutinesQuery({ requestPolicy: 'network-only' })}
-                searchRef={searchInputRef}
-                renderUserRoutineItem={({ item, index }) => renderRoutineCard(item, index)}
-                renderPlatformRoutineItem={({ item, index }) => renderPlatformRoutineCard(item, index)}
             />
         </ThemedView>
     );

@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef } from 'react';
-import { Alert } from 'react-native';
-import { useQuery, useMutation } from '@apollo/client';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { Alert, AppState, AppStateStatus } from 'react-native';
+import { useQuery, useMutation, NetworkStatus } from '@apollo/client';
 import { DELETE_ROUTINE } from '@/lib/graphql/mutations';
 import { GET_USER_ROUTINES } from '@/lib/graphql/queries';
 import { PaginatedRoutines, RoutineType, SkillLevel, UserRoutineRole } from '@/lib/graphql/types';
@@ -9,6 +9,7 @@ import { INITIAL_PLATFORM_WORKOUTS, generatePlatformWorkouts } from '@/constants
 // Constants
 const CURRENT_USER_ID = 1;
 const ITEMS_PER_PAGE = 10;
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 // FIXED static data - never changes
 const STATIC_ROUTINES: PaginatedRoutines = {
@@ -50,8 +51,10 @@ const STATIC_ROUTINES: PaginatedRoutines = {
  * Call this function after creating or editing a routine.
  */
 export function markRoutinesNeedRefresh() {
-  // Intentionally empty - we'll let Apollo handle cache invalidation
-  console.log('[Cache] Routine created or edited, Apollo will handle cache updates');
+  // Set a flag in a module-level variable
+  console.log('[Cache] Routine created or edited, marking for refresh');
+  // @ts-ignore
+  global._routineCreatedOrEdited = true;
 }
 
 /**
@@ -67,36 +70,41 @@ export function useLibraryRoutines(
   const [hasMoreWorkouts, setHasMoreWorkouts] = useState(true);
   const [graphqlPage, setGraphqlPage] = useState(0);
   
-  // Use Apollo's useQuery hook directly
-  const { data, loading, error, refetch } = useQuery(GET_USER_ROUTINES, {
+  // Use Apollo's useQuery hook with optimized configuration
+  const { data, loading, error, refetch, networkStatus } = useQuery(GET_USER_ROUTINES, {
     variables: {
       userId: CURRENT_USER_ID,
       skip: 0,
       take: ITEMS_PER_PAGE,
       type: selectedType || undefined,
     },
+    // Use cache-first for initial load, but ensure network refresh
     fetchPolicy: activeTab === 'routines' ? 'cache-and-network' : 'cache-only',
+    // Important: Return partial data to show UI faster
+    returnPartialData: true,
     skip: activeTab !== 'routines',
     notifyOnNetworkStatusChange: true,
-    // Critical: add initial static data when loading to avoid empty screens
+    // Add default static data to the cache if empty
     onCompleted: (data) => {
       console.log(`Query completed with ${data?.userRoutines?.routines?.length || 0} routines`);
     }
   });
   
-  // Extract user routines from query data with fallback to static data for immediate rendering
-  const userRoutines: PaginatedRoutines = data?.userRoutines || 
-    // Use static data as a fallback only for the first load
-    (loading && activeTab === 'routines' ? STATIC_ROUTINES : { 
-      routines: [], 
-      totalCount: 0, 
-      hasMore: false 
-    });
+  // Determine if data is updating (vs initial load)
+  const isUpdating = networkStatus === NetworkStatus.refetch || 
+                    networkStatus === NetworkStatus.poll;
+  
+  // Extract user routines from query data without mock data fallback
+  const userRoutines: PaginatedRoutines = data?.userRoutines || { 
+    routines: [], 
+    totalCount: 0, 
+    hasMore: false 
+  };
   
   // GraphQL mutation for deleting routines
   const [deleteRoutine] = useMutation(DELETE_ROUTINE);
   
-  // Load more platform workouts (mock data, unchanged)
+  // Load more platform workouts (without mock data)
   const loadMorePlatformWorkouts = useCallback(async () => {
     if (isLoadingMore || !hasMoreWorkouts) return;
     
@@ -104,14 +112,11 @@ export function useLibraryRoutines(
     
     try {
       const nextPage = graphqlPage + 1;
-      const newWorkouts = generatePlatformWorkouts(ITEMS_PER_PAGE, graphqlPage * ITEMS_PER_PAGE);
       
       if (nextPage >= 5) {
         setHasMoreWorkouts(false);
       }
       
-      // Since we're using a constant now, don't update
-      console.log(`[Mock] Would add ${newWorkouts.length} more platform workouts`);
       setGraphqlPage(nextPage);
     } finally {
       setIsLoadingMore(false);
@@ -155,11 +160,6 @@ export function useLibraryRoutines(
                     cache.gc();
                     
                     // Update the userRoutines query in cache directly
-                    const cacheKey = cache.identify({
-                      __typename: 'Query',
-                    });
-                    
-                    // Get existing data from cache
                     const existingData = cache.readQuery<{
                       userRoutines: PaginatedRoutines
                     }>({
@@ -216,24 +216,63 @@ export function useLibraryRoutines(
   // Track last refresh time
   const lastRefreshRef = useRef(Date.now());
   
-  // Focus-related handlers - simplified
+  // Enhanced focus-related handlers with better timing and error handling
   const refreshOnFocus = useCallback(() => {
     console.log('[Focus] Event triggered');
     
-    // Only refetch if we're on the routines tab AND it's been more than 5 minutes
+    // Check if we just created/edited a routine and need to refresh
+    // @ts-ignore
+    if (global._routineCreatedOrEdited) {
+      console.log('[Focus] Refreshing after routine creation/edit');
+      // @ts-ignore
+      global._routineCreatedOrEdited = false;
+      // Perform the refresh
+      refetch().catch(err => {
+        console.error('[Focus] Error refreshing after creation/edit:', err);
+      });
+      // Update last refresh time
+      lastRefreshRef.current = Date.now();
+      return;
+    }
+    
+    // Smarter refresh logic with timeout protection
     if (activeTab === 'routines') {
       const now = Date.now();
-      const fiveMinutesMs = 5 * 60 * 1000;
       
-      if (now - lastRefreshRef.current > fiveMinutesMs) {
-        console.log('[Focus] Refreshing data after 5+ minutes');
+      if (now - lastRefreshRef.current > REFRESH_INTERVAL_MS) {
+        console.log('[Focus] Refreshing data after time interval');
         lastRefreshRef.current = now;
-        refetch();
+        
+        // Add timeout protection for the refetch
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Refresh timeout')), 10000);
+        });
+        
+        Promise.race([refetch(), timeoutPromise])
+          .catch(err => {
+            console.error('[Focus] Refresh error or timeout:', err);
+          });
       } else {
         console.log('[Focus] Skipping refresh, data is fresh');
       }
     }
   }, [activeTab, refetch]);
+  
+  // Add AppState listener for more reliable foreground/background detection
+  useEffect(() => {
+    if (activeTab !== 'routines') return;
+    
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        console.log('[AppState] App came to foreground, checking refresh');
+        refreshOnFocus();
+      }
+    });
+    
+    return () => {
+      subscription.remove();
+    };
+  }, [activeTab, refreshOnFocus]);
   
   // No-op function for blur events
   const resetFocusFlag = useCallback(() => {
@@ -253,12 +292,12 @@ export function useLibraryRoutines(
     setGraphqlPage(0);
   }, []);
   
-  // Return the same interface as before but with simplified implementation
   return {
     userRoutines,
     allPlatformWorkouts,
-    fetching: loading,
-    isRefreshing: loading,
+    fetching: loading && !isUpdating, // Only true for initial load
+    isRefreshing: false, // Don't show pull-to-refresh indicator
+    isUpdating, // New property to show inline "updating..." text
     isLoadingMore,
     error,
     hasMoreRoutines: userRoutines.hasMore,

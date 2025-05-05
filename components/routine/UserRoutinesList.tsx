@@ -14,6 +14,9 @@ interface UserRoutinesListProps {
   renderRoutineCard: (routine: any, index: number) => JSX.Element;
   onCreateRoutinePress: () => void;
   sectionTitle: string;
+  isLoading?: boolean;
+  isStale?: boolean;
+  isUpdating?: boolean;
 }
 
 export const UserRoutinesList = ({
@@ -22,18 +25,32 @@ export const UserRoutinesList = ({
   graphqlPage,
   renderRoutineCard,
   onCreateRoutinePress,
-  sectionTitle
+  sectionTitle,
+  isLoading = false,
+  isStale = false,
+  isUpdating = false
 }: UserRoutinesListProps) => {
   const accentColor = useThemeColor('brand');
   const textColor = useThemeColor('text');
   const textColorSubtle = useThemeColor('textSecondary');
   const contrastBackgroundColor = useThemeColor('backgroundContrast');
+  const updateColor = useThemeColor('brand');
 
   const renderSectionHeader = () => (
     <View style={styles.sectionHeader}>
-      <ThemedText style={[styles.sectionTitle, { color: textColorSubtle }]}>
-        {sectionTitle}
-      </ThemedText>
+      <View style={styles.sectionTitleContainer}>
+        <ThemedText style={[styles.sectionTitle, { color: textColorSubtle }]}>
+          {sectionTitle}
+        </ThemedText>
+        
+        {isUpdating && (
+          <ThemedText 
+            style={[styles.updatingText, { color: updateColor }]}
+          >
+            updating...
+          </ThemedText>
+        )}
+      </View>
     </View>
   );
 
@@ -43,8 +60,7 @@ export const UserRoutinesList = ({
       <ThemedSection style={styles.section}>
         <View>
           {routines.length === 0 ? (
-            // Only show empty state when not fetching or when fetching first page
-            (fetching && graphqlPage === 0) ? (
+            (fetching && !isUpdating && graphqlPage === 0) ? (
               <View style={styles.emptyContainer}>
                 <ActivityIndicator size="large" color={accentColor} />
                 <ThemedText style={styles.loadingText}>Loading routines...</ThemedText>
@@ -88,9 +104,19 @@ const styles = StyleSheet.create({
   sectionHeader: {
     marginBottom: 12,
   },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   sectionTitle: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  updatingText: {
+    fontSize: 12,
+    marginLeft: 8,
+    fontWeight: '400',
+    fontStyle: 'italic',
   },
   emptyContainer: {
     alignItems: 'center',
