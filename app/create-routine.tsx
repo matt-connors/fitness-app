@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, TextInput, ScrollView, TouchableOpacity, GestureResponderEvent, PanResponder } from 'react-native';
+import { View, StyleSheet, TextInput, ScrollView, TouchableOpacity, GestureResponderEvent, PanResponder, Alert } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { PlatformPressable } from '@react-navigation/elements';
@@ -19,7 +19,20 @@ import { Exercise, RoutineData } from '@/types/Exercise';
 import ExerciseItem from '@/components/exercise/ExerciseItem';
 import RpeTooltip from '@/components/exercise/RpeTooltip';
 import { LinearGradient } from 'expo-linear-gradient';
-import { RECENT_ROUTINES, USER_CREATED_WORKOUTS, INITIAL_PLATFORM_WORKOUTS } from '@/constants/MockData';
+import { useQuery, useMutation } from '@apollo/client';
+import { GET_ROUTINE_DETAILS } from '@/lib/graphql/queries';
+import { CREATE_ROUTINE, UPDATE_ROUTINE } from '@/lib/graphql/mutations';
+import { 
+    Routine, 
+    RoutineType, 
+    SkillLevel, 
+    RoutineExercise, 
+    mapRoutineExerciseToExercise, 
+    mapExerciseToRoutineExerciseInput 
+} from '@/lib/graphql/types';
+
+// Mock user ID - in a real app, this would come from authentication
+const CURRENT_USER_ID = 1;
 
 export default function CreateRoutineScreen() {
     const router = useRouter();
@@ -28,7 +41,6 @@ export default function CreateRoutineScreen() {
     
     // Use a ref to track if we've initialized the data
     const hasInitialized = useRef(false);
-    const routineDataRef = useRef<RoutineData | null>(null);
     
     // Check if we're in edit mode
     const isEditMode = params.mode === 'edit';
@@ -36,6 +48,8 @@ export default function CreateRoutineScreen() {
 
     // State management
     const [routineName, setRoutineName] = useState('');
+    const [routineType, setRoutineType] = useState<RoutineType>(RoutineType.Strength);
+    const [routineSkillLevel, setRoutineSkillLevel] = useState<SkillLevel | undefined>(undefined);
     const [exercises, setExercises] = useState<Exercise[]>([]);
     const [showExerciseDropdown, setShowExerciseDropdown] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -45,6 +59,18 @@ export default function CreateRoutineScreen() {
     const [routineNameError, setRoutineNameError] = useState(false);
     const [showRpeTooltip, setShowRpeTooltip] = useState<string | null>(null);
     const [showRirTooltip, setShowRirTooltip] = useState<string | null>(null);
+
+    // GraphQL queries and mutations
+    const { loading: routineLoading, error: routineError, data: routineData } = useQuery(
+        GET_ROUTINE_DETAILS,
+        {
+            variables: { id: parseInt(workoutId || '0', 10) },
+            skip: !isEditMode || !workoutId
+        }
+    );
+
+    const [createRoutine] = useMutation(CREATE_ROUTINE);
+    const [updateRoutine] = useMutation(UPDATE_ROUTINE);
 
     // Theme colors
     const textColor = useThemeColor('text');
@@ -72,47 +98,36 @@ export default function CreateRoutineScreen() {
         loadExercises();
     }, []);
 
-    // Load workout data based on ID if provided
+    // Load workout data from GraphQL if in edit mode
     useEffect(() => {
-        if (hasInitialized.current) return;
+        if (hasInitialized.current || !isEditMode || !workoutId) return;
         
-        if (workoutId) {
-            // In a real app, you would fetch this data from a database or API
-            // For now, we'll search through our mock data
-            let workout = [...USER_CREATED_WORKOUTS, ...RECENT_ROUTINES, ...INITIAL_PLATFORM_WORKOUTS]
-                .find(w => w.id === workoutId);
-                
-            if (workout) {
-                routineDataRef.current = workout;
-                setRoutineName(workout.name || '');
-                
-                // If workout has exercises array, use that directly
-                if (workout.exercises && Array.isArray(workout.exercises)) {
-                    setExercises(workout.exercises);
-                } 
-                // Otherwise fall back to the demo data logic
-                else if (workout.type === 'Strength') {
-                    setExercises([
-                        { id: '1', name: 'Bench Press', sets: 3, reps: 10, allSetsEqual: true, showRpe: true, rpe: 7, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 10, restPause: 60, rpe: 7, tempo: 0, weight: 135, showExpanded: false }] },
-                        { id: '2', name: 'Squats', sets: 4, reps: 8, allSetsEqual: true, showRpe: true, rpe: 8, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 8, restPause: 90, rpe: 8, tempo: 0, weight: 185, showExpanded: false }] },
-                        { id: '3', name: 'Deadlifts', sets: 3, reps: 6, allSetsEqual: true, showRpe: true, rpe: 9, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 6, restPause: 120, rpe: 9, tempo: 0, weight: 225, showExpanded: false }] }
-                    ]);
-                } else if (workout.type === 'Cardio') {
-                    setExercises([
-                        { id: '1', name: 'Sprints', sets: 6, reps: 30, allSetsEqual: true, showRpe: true, rpe: 7, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 30, restPause: 30, rpe: 7, tempo: 0, weight: 0, showExpanded: false }] },
-                        { id: '2', name: 'Jump Rope', sets: 3, reps: 60, allSetsEqual: true, showRpe: true, rpe: 6, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 60, restPause: 45, rpe: 6, tempo: 0, weight: 0, showExpanded: false }] }
-                    ]);
-                } else if (workout.type === 'Core') {
-                    setExercises([
-                        { id: '1', name: 'Crunches', sets: 3, reps: 15, allSetsEqual: true, showRpe: true, rpe: 6, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 15, restPause: 30, rpe: 6, tempo: 0, weight: 0, showExpanded: false }] },
-                        { id: '2', name: 'Planks', sets: 3, reps: 45, allSetsEqual: true, showRpe: true, rpe: 8, showExpanded: false, multipleSets: [{ setNumber: 1, reps: 45, restPause: 30, rpe: 8, tempo: 0, weight: 0, showExpanded: false }] }
-                    ]);
-                }
-            }
+        if (routineLoading) return;
+        
+        if (routineError) {
+            console.error('Error loading routine:', routineError);
+            Alert.alert('Error', 'Failed to load routine details');
+            return;
         }
         
-        hasInitialized.current = true;
-    }, [workoutId]);
+        if (routineData?.routine) {
+            const routine = routineData.routine;
+            setRoutineName(routine.name);
+            setRoutineType(routine.type as RoutineType);
+            setRoutineSkillLevel(routine.skillLevel as SkillLevel);
+            
+            if (routine.routineExercises && routine.routineExercises.length > 0) {
+                const routineExercises = routine.routineExercises
+                    .sort((a: RoutineExercise, b: RoutineExercise) => a.order - b.order)
+                    .map((re: RoutineExercise) => mapRoutineExerciseToExercise(re))
+                    .filter(Boolean);
+                
+                setExercises(routineExercises);
+            }
+            
+            hasInitialized.current = true;
+        }
+    }, [routineData, routineLoading, routineError, isEditMode, workoutId]);
 
     // Handle search query changes - use debounce for better performance
     useEffect(() => {
@@ -333,7 +348,7 @@ export default function CreateRoutineScreen() {
     };
 
     // Save and navigation functions
-    const handleSave = () => {
+    const handleSave = async () => {
         // Check if routine name is provided (required field)
         if (!routineName.trim()) {
             // Show validation error for routine name
@@ -341,20 +356,60 @@ export default function CreateRoutineScreen() {
             return;
         }
 
-        // Prepare the routine data to save
-        const routineToSave = {
-            id: routineDataRef.current?.id || Date.now().toString(),
-            name: routineName,
-            type: routineDataRef.current?.type || 'Strength', // Default to Strength if not specified
-            exercises: exercises,
-            source: 'user',
-        };
-        
-        // In a real app, you would save this to a database or state store
-        console.log('Saving routine:', routineToSave);
+        // Check if we have at least one exercise
+        if (exercises.length === 0) {
+            Alert.alert('Error', 'Please add at least one exercise to your routine');
+            return;
+        }
 
-        // Navigate back to the previous screen
-        router.back();
+        try {
+            // Map exercises to the format expected by the GraphQL API
+            const exerciseInputs = exercises.map((exercise, index) => 
+                mapExerciseToRoutineExerciseInput(exercise, index)
+            );
+
+            // Prepare the input for the mutation
+            const routineInput = {
+                name: routineName,
+                type: routineType, // This is a string value from the enum
+                skillLevel: routineSkillLevel, // This is a string value from the enum
+                exercises: exerciseInputs
+            };
+
+            // Execute the appropriate mutation based on whether we're editing or creating
+            if (isEditMode && workoutId) {
+                const { data, errors } = await updateRoutine({
+                    variables: {
+                        id: parseInt(workoutId, 10),
+                        input: routineInput
+                    }
+                });
+
+                if (errors) {
+                    console.error('Error updating routine:', errors);
+                    Alert.alert('Error', 'Failed to update routine');
+                    return;
+                }
+            } else {
+                const { data, errors } = await createRoutine({
+                    variables: {
+                        input: routineInput
+                    }
+                });
+
+                if (errors) {
+                    console.error('Error creating routine:', errors);
+                    Alert.alert('Error', 'Failed to create routine');
+                    return;
+                }
+            }
+
+            // Navigate back on success
+            router.back();
+        } catch (error) {
+            console.error('Error saving routine:', error);
+            Alert.alert('Error', 'An unexpected error occurred while saving the routine');
+        }
     };
 
     const handleDiscard = () => {
@@ -479,10 +534,60 @@ export default function CreateRoutineScreen() {
                 )}
             </ThemedSection>
 
+            {/* Routine Type Selector */}
+            <ThemedSection style={styles.typeSection}>
+                <ThemedText style={styles.labelText}>Routine Type</ThemedText>
+                <View style={styles.typeButtonsContainer}>
+                    {Object.values(RoutineType).map((type) => (
+                        <TouchableOpacity
+                            key={type}
+                            style={[
+                                styles.typeButton,
+                                routineType === type && [styles.selectedTypeButton, { backgroundColor: accentColor }]
+                            ]}
+                            onPress={() => setRoutineType(type)}
+                        >
+                            <ThemedText style={[
+                                styles.typeButtonText,
+                                routineType === type && [styles.selectedTypeButtonText, { color: accentTextColor }]
+                            ]}>
+                                {type}
+                            </ThemedText>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </ThemedSection>
+
+            {/* Skill Level Selector */}
+            <ThemedSection style={styles.skillSection}>
+                <ThemedText style={styles.labelText}>Skill Level (Optional)</ThemedText>
+                <View style={styles.typeButtonsContainer}>
+                    {Object.values(SkillLevel).map((level) => (
+                        <TouchableOpacity
+                            key={level}
+                            style={[
+                                styles.typeButton,
+                                routineSkillLevel === level && [styles.selectedTypeButton, { backgroundColor: accentColor }]
+                            ]}
+                            onPress={() => setRoutineSkillLevel(
+                                routineSkillLevel === level ? undefined : level
+                            )}
+                        >
+                            <ThemedText style={[
+                                styles.typeButtonText,
+                                routineSkillLevel === level && [styles.selectedTypeButtonText, { color: accentTextColor }]
+                            ]}>
+                                {level}
+                            </ThemedText>
+                        </TouchableOpacity>
+                    ))}
+                </View>
+            </ThemedSection>
+
             {/* Exercises Section Header */}
-            {/* <View style={styles.exercisesSection}>
+            <View style={styles.exercisesSection}>
                 <ThemedText style={styles.sectionHeader}>Exercises</ThemedText>
-            </View> */}
+            </View>
         </View>
     );
 
@@ -505,17 +610,35 @@ export default function CreateRoutineScreen() {
         </View>
     );
 
-    // Render an empty state component when there are no exercises
-    const EmptyList = () => (
-        <View style={{
-            paddingTop: 8,
-            paddingBottom: SPACING.pageHorizontalInside
-        }}>
-            <View style={styles.exercisesSection}>
-                <ThemedText style={styles.sectionHeader}>Exercises</ThemedText>
-            </View>
-        </View>
-    );
+    // Loading state
+    if (isEditMode && routineLoading) {
+        return (
+            <ThemedView style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+                <ThemedText>Loading routine...</ThemedText>
+            </ThemedView>
+        );
+    }
+
+    // Error state
+    if (isEditMode && routineError) {
+        return (
+            <ThemedView style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
+                <ThemedText style={{ marginBottom: 16, textAlign: 'center' }}>
+                    Error loading routine: {routineError.message}
+                </ThemedText>
+                <TouchableOpacity
+                    style={{ padding: 12, backgroundColor: accentColor, borderRadius: 8 }}
+                    onPress={() => {
+                        // Re-execute the query
+                        // Note: This is a placeholder implementation. In a real app, you might want to use a different approach
+                        // to re-execute the query, such as using a refetch function or a custom query component
+                    }}
+                >
+                    <ThemedText style={{ color: accentTextColor }}>Retry</ThemedText>
+                </TouchableOpacity>
+            </ThemedView>
+        );
+    }
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
@@ -563,7 +686,6 @@ export default function CreateRoutineScreen() {
                         renderItem={renderExerciseItem}
                         ListHeaderComponent={ListHeader}
                         ListFooterComponent={ListFooter}
-                        ListEmptyComponent={EmptyList}
                         showsVerticalScrollIndicator={false}
                         scrollEventThrottle={8}
                         keyboardShouldPersistTaps="handled"
@@ -628,6 +750,41 @@ const styles = StyleSheet.create({
         marginTop: 24,
         marginBottom: SPACING.pageHorizontalInside,
     },
+    typeSection: {
+        marginBottom: SPACING.pageHorizontalInside,
+    },
+    skillSection: {
+        marginBottom: SPACING.pageHorizontalInside,
+    },
+    labelText: {
+        fontSize: 16,
+        fontWeight: '500',
+        marginBottom: 10,
+        marginLeft: SPACING.pageHorizontalInside,
+    },
+    typeButtonsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        paddingHorizontal: SPACING.pageHorizontalInside,
+    },
+    typeButton: {
+        paddingHorizontal: 14,
+        paddingVertical: 8,
+        borderRadius: 16,
+        backgroundColor: 'rgba(100, 100, 100, 0.1)',
+        marginRight: 8,
+        marginBottom: 8,
+    },
+    selectedTypeButton: {
+        backgroundColor: '#3498db',
+    },
+    typeButtonText: {
+        fontSize: 14,
+    },
+    selectedTypeButtonText: {
+        color: '#ffffff',
+    },
     routineNameInput: {
         fontSize: 16,
         fontWeight: '400',
@@ -646,12 +803,12 @@ const styles = StyleSheet.create({
         marginLeft: SPACING.pageHorizontalInside,
     },
     exercisesSection: {
-        // marginTop: 14,
+        marginTop: 14,
     },
     sectionHeader: {
         fontSize: 13,
         fontWeight: '500',
-        // marginBottom: 12,
+        marginBottom: 12,
         color: '#888',
     },
     addExerciseButton: {

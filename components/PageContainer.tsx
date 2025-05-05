@@ -14,13 +14,15 @@ interface PageContainerProps {
     style?: any;
     hasHeader?: boolean; // Option to indicate if using StandardHeader
     hasHeaderContent?: boolean; // Option to indicate if header has additional content
+    disableScroll?: boolean; // Option to disable scrolling and use a View instead
 }
 
 export function PageContainer({ 
     children, 
     style, 
     hasHeader = false, 
-    hasHeaderContent = false 
+    hasHeaderContent = false,
+    disableScroll = false
 }: PageContainerProps) {
     const insets = useSafeAreaInsets();
     const scrollRef = useAnimatedRef<Animated.ScrollView>();
@@ -29,18 +31,35 @@ export function PageContainer({
     const topPadding = hasHeader 
         ? insets.top + HEADER_HEIGHT + (hasHeaderContent ? HEADER_PADDING : 0)
         : 0;
+        
+    // Common styles for both container types
+    const containerStyle = [
+        {
+            paddingHorizontal: SPACING.pageHorizontal,
+            paddingTop: topPadding,
+        },
+        style
+    ];
 
+    // Use a View instead of ScrollView when disableScroll is true
+    if (disableScroll) {
+        return (
+            <View style={containerStyle}>
+                <ThemedView style={{ flex: 1 }}>
+                    {children}
+                    {/* Add bottom padding for tabbar and safe area */}
+                    <View style={{ paddingBottom: SPACING.navHeight + insets.bottom }} />
+                </ThemedView>
+            </View>
+        );
+    }
+
+    // Default ScrollView implementation
     return <Animated.ScrollView
         ref={scrollRef}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
-        style={[
-            {
-                paddingHorizontal: SPACING.pageHorizontal,
-                paddingTop: topPadding,
-            },
-            style
-        ]}
+        style={containerStyle}
     >
         <ThemedView>
             {children}

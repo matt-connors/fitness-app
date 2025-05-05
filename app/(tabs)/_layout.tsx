@@ -3,14 +3,15 @@ import { View, StyleSheet, Platform } from 'react-native';
 import { Tabs } from 'expo-router';
 import { TabBar } from '@/components/ui/TabBar';
 import { ActiveWorkoutBar } from '@/components/ui/ActiveWorkoutBar';
-import { useActiveWorkout } from '@/components/ActiveWorkoutProvider';
+import { useActiveWorkout, ActiveWorkoutProvider } from '@/components/ActiveWorkoutProvider';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/Colors';
 import { SPACING } from '@/constants/Spacing';
 
-export default function TabLayout() {
+// Wrapper component that provides the ActiveWorkoutProvider
+function TabLayoutContent() {
     const { 
         activeWorkout, 
         elapsedTime, 
@@ -90,6 +91,15 @@ export default function TabLayout() {
                 />
             )}
         </View>
+    );
+}
+
+// Default export wraps the content with the required provider
+export default function TabLayout() {
+    return (
+        <ActiveWorkoutProvider>
+            <TabLayoutContent />
+        </ActiveWorkoutProvider>
     );
 }
 
