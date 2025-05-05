@@ -8,13 +8,22 @@ export const CREATE_ROUTINE = gql`
       name
       type
       skillLevel
-      routineExercises {
-        exerciseId
+      updatedAt
+      createdAt
+      exercises {
+        id
+        name
         sets
-        restTime
-        order
-        rir
+        reps
+        weight
+        duration
+        distance
+        calories
         notes
+        order
+      }
+      userRoutines {
+        role
       }
     }
   }
@@ -28,13 +37,22 @@ export const UPDATE_ROUTINE = gql`
       name
       type
       skillLevel
-      routineExercises {
-        exerciseId
+      updatedAt
+      createdAt
+      exercises {
+        id
+        name
         sets
-        restTime
-        order
-        rir
+        reps
+        weight
+        duration
+        distance
+        calories
         notes
+        order
+      }
+      userRoutines {
+        role
       }
     }
   }
@@ -44,5 +62,28 @@ export const UPDATE_ROUTINE = gql`
 export const DELETE_ROUTINE = gql`
   mutation DeleteRoutine($id: Int!) {
     deleteRoutine(id: $id)
+  }
+`;
+
+export const CREATE_WORKOUT = gql`
+  mutation CreateWorkout($input: CreateWorkoutInput!) {
+    createWorkout(input: $input) {
+      id
+      date
+      routineId
+      status
+      completedExercises {
+        id
+        exerciseId
+        completed
+        actualSets
+        actualReps
+        actualWeight
+        actualDuration
+        actualDistance
+        actualCalories
+        notes
+      }
+    }
   }
 `; 

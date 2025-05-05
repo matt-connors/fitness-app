@@ -45,7 +45,7 @@ export const UserRoutinesList = ({
         
         {isUpdating && (
           <ThemedText 
-            style={[styles.updatingText, { color: updateColor }]}
+            style={[styles.sectionTitle, { color: textColorSubtle, marginLeft: 8 }]}
           >
             updating...
           </ThemedText>
@@ -111,12 +111,6 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 13,
     fontWeight: '500',
-  },
-  updatingText: {
-    fontSize: 12,
-    marginLeft: 8,
-    fontWeight: '400',
-    fontStyle: 'italic',
   },
   emptyContainer: {
     alignItems: 'center',

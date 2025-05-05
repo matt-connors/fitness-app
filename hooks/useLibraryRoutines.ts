@@ -73,10 +73,10 @@ export function useLibraryRoutines(
   // Use Apollo's useQuery hook with optimized configuration
   const { data, loading, error, refetch, networkStatus } = useQuery(GET_USER_ROUTINES, {
     variables: {
-      userId: CURRENT_USER_ID,
+        userId: CURRENT_USER_ID,
       skip: 0,
-      take: ITEMS_PER_PAGE,
-      type: selectedType || undefined,
+        take: ITEMS_PER_PAGE,
+        type: selectedType || undefined,
     },
     // Use cache-first for initial load, but ensure network refresh
     fetchPolicy: activeTab === 'routines' ? 'cache-and-network' : 'cache-only',
@@ -101,8 +101,61 @@ export function useLibraryRoutines(
     hasMore: false 
   };
   
-  // GraphQL mutation for deleting routines
-  const [deleteRoutine] = useMutation(DELETE_ROUTINE);
+  // GraphQL mutation for deleting routines with improved cache handling
+  const [deleteRoutineMutation] = useMutation(DELETE_ROUTINE, {
+    // When the mutation completes, update the cache
+    update: (cache, { data }) => {
+      // If deleteRoutine is true, the deletion was successful
+      if (data?.deleteRoutine === true) {
+        try {
+          // Directly evict the routine from the cache
+          const cacheId = `Routine:${data.__lastDeletedRoutineId}`;
+          cache.evict({ id: cacheId });
+          cache.gc();
+  
+          // Read the current query from the cache
+          const existingData = cache.readQuery<{
+            userRoutines: PaginatedRoutines
+          }>({
+            query: GET_USER_ROUTINES,
+            variables: {
+              userId: CURRENT_USER_ID,
+              skip: 0,
+              take: ITEMS_PER_PAGE,
+              type: selectedType || undefined,
+            }
+          });
+
+          if (existingData && existingData.userRoutines) {
+            // Update routines list by removing the deleted routine
+            const updatedRoutines = {
+              ...existingData.userRoutines,
+              routines: existingData.userRoutines.routines.filter(
+                (r) => r.id !== data.__lastDeletedRoutineId
+              ),
+              totalCount: existingData.userRoutines.totalCount - 1
+            };
+      
+            // Write the updated data back to cache
+            cache.writeQuery({
+              query: GET_USER_ROUTINES,
+              variables: {
+                userId: CURRENT_USER_ID,
+                skip: 0,
+                take: ITEMS_PER_PAGE,
+                type: selectedType || undefined,
+              },
+              data: {
+                userRoutines: updatedRoutines
+              }
+            });
+          }
+        } catch (err) {
+          console.error('[Cache] Error updating cache after delete:', err);
+        }
+    }
+    }
+  });
   
   // Load more platform workouts (without mock data)
   const loadMorePlatformWorkouts = useCallback(async () => {
@@ -134,7 +187,7 @@ export function useLibraryRoutines(
     console.log('Pagination not fully implemented in simplified version');
   }, [loading, userRoutines.hasMore, graphqlPage]);
   
-  // Handle delete routine
+  // Improved delete routine function with better Apollo integration
   const handleDeleteRoutine = useCallback(async (routineId: number, routineName: string) => {
     return new Promise((resolve, reject) => {
       Alert.alert(
@@ -151,56 +204,33 @@ export function useLibraryRoutines(
             style: "destructive",
             onPress: async () => {
               try {
-                await deleteRoutine({ 
-                  variables: { id: routineId },
-                  update: (cache) => {
-                    // Remove the deleted routine from cache
-                    const cacheId = `Routine:${routineId}`;
-                    cache.evict({ id: cacheId });
-                    cache.gc();
-                    
-                    // Update the userRoutines query in cache directly
-                    const existingData = cache.readQuery<{
-                      userRoutines: PaginatedRoutines
-                    }>({
-                      query: GET_USER_ROUTINES,
-                      variables: {
-                        userId: CURRENT_USER_ID,
-                        skip: 0,
-                        take: ITEMS_PER_PAGE,
-                        type: selectedType || undefined,
-                      }
-                    });
-                    
-                    if (existingData && existingData.userRoutines) {
-                      // Update routines list by removing the deleted routine
-                      const updatedRoutines = {
-                        ...existingData.userRoutines,
-                        routines: existingData.userRoutines.routines.filter(
-                          (r) => r.id !== routineId
-                        ),
-                        totalCount: existingData.userRoutines.totalCount - 1
-                      };
-                      
-                      // Write the updated data back to cache
-                      cache.writeQuery({
-                        query: GET_USER_ROUTINES,
-                        variables: {
-                          userId: CURRENT_USER_ID,
-                          skip: 0,
-                          take: ITEMS_PER_PAGE,
-                          type: selectedType || undefined,
-                        },
-                        data: {
-                          userRoutines: updatedRoutines
-                        }
-                      });
-                    }
+                // Store the ID for cache updates
+                const idToDelete = Number(routineId);
+                
+                // Call the delete mutation - must pass integer
+                const { data, errors } = await deleteRoutineMutation({ 
+                  variables: { id: idToDelete },
+                  optimisticResponse: {
+                    deleteRoutine: true,
+                    __lastDeletedRoutineId: idToDelete
                   }
                 });
                 
-                // No need to refetch as we've updated the cache directly
+                if (errors) {
+                  console.error("GraphQL errors:", errors);
+                  Alert.alert("Error", "Failed to delete routine");
+                  resolve(false);
+                  return;
+                }
+                
+                if (data?.deleteRoutine === true) {
+                  console.log(`Successfully deleted routine: ${routineName}`);
                 resolve(true);
+                } else {
+                  console.error(`Error deleting routine: Server returned false`);
+                  Alert.alert("Error", "Failed to delete routine");
+                  resolve(false);
+                }
               } catch (error) {
                 console.error('Error deleting routine:', error);
                 Alert.alert("Error", "Failed to delete routine");
@@ -211,7 +241,7 @@ export function useLibraryRoutines(
         ]
       );
     });
-  }, [deleteRoutine, selectedType]);
+  }, [deleteRoutineMutation, selectedType]);
   
   // Track last refresh time
   const lastRefreshRef = useRef(Date.now());
@@ -219,7 +249,7 @@ export function useLibraryRoutines(
   // Enhanced focus-related handlers with better timing and error handling
   const refreshOnFocus = useCallback(() => {
     console.log('[Focus] Event triggered');
-    
+  
     // Check if we just created/edited a routine and need to refresh
     // @ts-ignore
     if (global._routineCreatedOrEdited) {
