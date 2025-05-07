@@ -10,17 +10,17 @@ export const CREATE_ROUTINE = gql`
       skillLevel
       updatedAt
       createdAt
-      exercises {
-        id
-        name
+      routineExercises {
+        exerciseId
         sets
-        reps
-        weight
-        duration
-        distance
-        calories
-        notes
+        restTime
         order
+        rir
+        notes
+        exercise {
+          id
+          name
+        }
       }
       userRoutines {
         role
@@ -39,17 +39,17 @@ export const UPDATE_ROUTINE = gql`
       skillLevel
       updatedAt
       createdAt
-      exercises {
-        id
-        name
+      routineExercises {
+        exerciseId
         sets
-        reps
-        weight
-        duration
-        distance
-        calories
-        notes
+        restTime
         order
+        rir
+        notes
+        exercise {
+          id
+          name
+        }
       }
       userRoutines {
         role

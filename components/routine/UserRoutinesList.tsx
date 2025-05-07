@@ -47,7 +47,7 @@ export const UserRoutinesList = ({
           <ThemedText 
             style={[styles.sectionTitle, { color: textColorSubtle, marginLeft: 8 }]}
           >
-            updating...
+            Updating...
           </ThemedText>
         )}
       </View>
