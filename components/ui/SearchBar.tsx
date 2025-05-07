@@ -58,7 +58,7 @@ export const SearchBar = forwardRef<TextInput, SearchBarProps>(({
         style
       ]}
     >
-      <Search size={18} color={textColorMuted} style={styles.searchIcon} />
+      <Search size={20} color={textColorMuted} style={styles.searchIcon} />
       <TextInput
         ref={ref}
         style={[styles.searchInput, { color: textColor }]}
@@ -94,7 +94,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 10,
     borderWidth: 1,
-    height: 40,
+    height: 42,
     paddingHorizontal: 12,
   },
   searchIcon: {

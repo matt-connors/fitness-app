@@ -8,6 +8,8 @@ import { PlatformRoutinesList } from './PlatformRoutinesList';
 import { EmptyRegimentsView } from './EmptyRegimentsView';
 import { SPACING } from '@/constants/Spacing';
 import { PaginatedRoutines } from '@/lib/graphql/types';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useThemeColor } from '@/hooks/useThemeColor';
 
 interface LibraryContentProps {
   activeTab: 'routines' | 'regiments';
@@ -48,6 +50,7 @@ export const LibraryContent = ({
 }: LibraryContentProps) => {
   // Only show refresh indicator for explicit refresh actions, not initial loads or background refreshes
   const shouldShowRefreshIndicator = isRefreshing && !isUserRoutinesLoading;
+  const backgroundColor = useThemeColor('background');
   
   // DEBUG: Log what data this component is receiving
   console.log('LibraryContent receiving:', {
@@ -90,8 +93,19 @@ export const LibraryContent = ({
             placeholder="Search Routines..."
             active={false}
             onPressIn={onSearchPress}
-            style={{ marginBottom: 28, marginTop: 12 }}
+            style={{ marginTop: 12 }}
           />
+          
+          {/* Gradient overlay below search bar */}
+          <View style={styles.gradientContainer}>
+            <LinearGradient
+              colors={[`${backgroundColor}`, `${backgroundColor}00`]}
+              style={styles.gradient}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 1 }}
+              pointerEvents="none"
+            />
+          </View>
 
           {/* Only show small loading indicator for explicit refreshes, not background fetches */}
           {shouldShowRefreshIndicator && (
@@ -139,5 +153,19 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     flex: 1,
+    paddingTop: 28,
+  },
+  gradientContainer: {
+    position: 'absolute',
+    top: 70, // Position it just below the search bar
+    left: 0,
+    right: 0,
+    height: 20,
+    zIndex: 5,
+  },
+  gradient: {
+    height: '100%',
+    width: '100%',
+    position: 'absolute',
   }
 }); 

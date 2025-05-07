@@ -81,6 +81,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingTop: 12,
     paddingBottom: 12,
+    paddingHorizontal: 0
   },
   chip: {
     borderRadius: 12,

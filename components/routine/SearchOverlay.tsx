@@ -7,6 +7,7 @@ import { FilterChips } from './FilterChips';
 import { SearchBar } from '@/components/ui/SearchBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Routine } from '@/lib/graphql/types';
+import { ThemedSection } from '@/components/ThemedSection';
 
 interface SearchOverlayProps {
   visible: boolean;
@@ -95,14 +96,14 @@ export const SearchOverlay = ({
         style={{ flex: 1 }}
         keyboardVerticalOffset={10}
       >
-        <View style={[styles.searchHeader, { paddingTop: insets.top + 8 }]}>
+        <View style={[styles.searchHeader, { paddingTop: 28 }]}>
           <SearchBar
             ref={searchRef}
             active={true}
             value={searchQuery}
             onChangeText={onSearchChange}
             onClear={() => onClear()}
-            placeholder="Search routines..."
+            placeholder="Search Routines..."
             style={styles.searchInputContainer}
           />
           <TouchableOpacity
@@ -114,7 +115,7 @@ export const SearchOverlay = ({
         </View>
 
         {/* Workout Type Chips in Search View - more compact */}
-        <View style={{ marginBottom: 2 }}>
+        <View style={styles.filterChipsContainer}>
           <FilterChips
             data={filterChipsData}
             selectedId={selectedFilterId}
@@ -135,7 +136,7 @@ export const SearchOverlay = ({
               <ThemedText style={{ color: accentColor }}>Retry</ThemedText>
             </TouchableOpacity>
           </View>
-        ) : fetching ? (
+        ) : fetching && !hasResults ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={accentColor} />
             <ThemedText style={styles.loadingText}>Searching routines...</ThemedText>
@@ -155,28 +156,32 @@ export const SearchOverlay = ({
                 )}
 
                 {userRoutines.length > 0 && (
-                  <View style={{ paddingHorizontal: SPACING.pageHorizontal }}>
+                  <View style={styles.sectionContainer}>
                     {renderSectionHeader('Your Routines')}
-                    <FlatList
-                      data={userRoutines}
-                      renderItem={renderUserRoutineItem}
-                      keyExtractor={item => item.id.toString()}
-                      scrollEnabled={false}
-                    />
+                    <ThemedSection>
+                      <FlatList
+                        data={userRoutines}
+                        renderItem={renderUserRoutineItem}
+                        keyExtractor={item => item.id.toString()}
+                        scrollEnabled={false}
+                      />
+                    </ThemedSection>
                   </View>
                 )}
               </>
             )}
             data={platformRoutines.length > 0 ? [{ id: 'header' }] : []}
             renderItem={() => (
-              <View style={{ paddingHorizontal: SPACING.pageHorizontal }}>
+              <View style={styles.sectionContainer}>
                 {renderSectionHeader('Routine Library')}
-                <FlatList
-                  data={platformRoutines}
-                  renderItem={renderPlatformRoutineItem}
-                  keyExtractor={item => item.id}
-                  scrollEnabled={false}
-                />
+                <ThemedSection>
+                  <FlatList
+                    data={platformRoutines}
+                    renderItem={renderPlatformRoutineItem}
+                    keyExtractor={item => item.id}
+                    scrollEnabled={false}
+                  />
+                </ThemedSection>
               </View>
             )}
             onEndReached={onLoadMore}
@@ -190,8 +195,7 @@ export const SearchOverlay = ({
               ) : null
             )}
             contentContainerStyle={{ 
-              paddingHorizontal: SPACING.pageHorizontal,
-              paddingTop: 8,
+            //   paddingTop: 8,
               paddingBottom: 50,
               flexGrow: !hasResults ? 1 : undefined
             }}
@@ -214,8 +218,7 @@ const styles = StyleSheet.create({
   searchHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.pageHorizontal,
-    paddingVertical: 8,
+    // height: 42
   },
   searchInputContainer: {
     flex: 1,
@@ -227,12 +230,19 @@ const styles = StyleSheet.create({
   cancelText: {
     fontSize: 16,
   },
+  filterChipsContainer: {
+    // marginBottom: 12,
+  },
+  sectionContainer: {
+    marginBottom: 16,
+  },
   sectionHeader: {
-    marginBottom: 12,
-    marginTop: 16,
+    marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 13,
+    marginTop: 14,
+    marginBottom: 4,
     fontWeight: '500',
   },
   errorContainer: {
@@ -266,7 +276,6 @@ const styles = StyleSheet.create({
   noResultsContainer: {
     paddingTop: 32,
     alignItems: 'center',
-    paddingHorizontal: SPACING.pageHorizontal,
   },
   noResultsText: {
     fontSize: 16,
