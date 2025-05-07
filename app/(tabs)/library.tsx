@@ -85,7 +85,7 @@ export default function LibraryScreen() {
             router.push({
                 pathname: '/create-routine',
                 params: { 
-                    mode: editMode ? 'edit' : undefined,
+                    mode: 'edit', // Always use edit mode for existing routines
                     workoutId: routine.id.toString()
                 }
             });
