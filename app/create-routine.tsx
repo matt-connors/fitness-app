@@ -31,8 +31,6 @@ import {
     mapExerciseToRoutineExerciseInput 
 } from '@/lib/graphql/types';
 
-// Mock user ID - in a real app, this would come from authentication
-const CURRENT_USER_ID = 1;
 
 export default function CreateRoutineScreen() {
     const router = useRouter();
@@ -78,6 +76,7 @@ export default function CreateRoutineScreen() {
     const accentColor = useThemeColor('brand');
     const accentTextColor = useThemeColor('brandText');
     const contrastBackgroundColor = useThemeColor('backgroundContrast');
+    const subBackgroundColor = useThemeColor('backgroundSubtleContrast');
     const backgroundColor = useThemeColor('background');
 
     // Load exercise data on mount
@@ -535,14 +534,15 @@ export default function CreateRoutineScreen() {
             </ThemedSection>
 
             {/* Routine Type Selector */}
-            <ThemedSection style={styles.typeSection}>
-                <ThemedText style={styles.labelText}>Routine Type</ThemedText>
+            <ThemedText style={styles.sectionHeader}>Routine Type</ThemedText>
+            <View style={styles.typeSection}>
                 <View style={styles.typeButtonsContainer}>
                     {Object.values(RoutineType).map((type) => (
                         <TouchableOpacity
                             key={type}
                             style={[
                                 styles.typeButton,
+                                { backgroundColor: subBackgroundColor },
                                 routineType === type && [styles.selectedTypeButton, { backgroundColor: accentColor }]
                             ]}
                             onPress={() => setRoutineType(type)}
@@ -556,17 +556,18 @@ export default function CreateRoutineScreen() {
                         </TouchableOpacity>
                     ))}
                 </View>
-            </ThemedSection>
+            </View>
 
             {/* Skill Level Selector */}
-            <ThemedSection style={styles.skillSection}>
-                <ThemedText style={styles.labelText}>Skill Level (Optional)</ThemedText>
+            <ThemedText style={styles.sectionHeader}>Skill Level</ThemedText>
+            <View style={styles.skillSection}>
                 <View style={styles.typeButtonsContainer}>
                     {Object.values(SkillLevel).map((level) => (
                         <TouchableOpacity
                             key={level}
                             style={[
                                 styles.typeButton,
+                                { backgroundColor: subBackgroundColor },
                                 routineSkillLevel === level && [styles.selectedTypeButton, { backgroundColor: accentColor }]
                             ]}
                             onPress={() => setRoutineSkillLevel(
@@ -582,7 +583,7 @@ export default function CreateRoutineScreen() {
                         </TouchableOpacity>
                     ))}
                 </View>
-            </ThemedSection>
+            </View>
 
             {/* Exercises Section Header */}
             <View style={styles.exercisesSection}>
@@ -748,31 +749,25 @@ const styles = StyleSheet.create({
     },
     nameSection: {
         marginTop: 24,
-        marginBottom: SPACING.pageHorizontalInside,
+        marginBottom: SPACING.pageVertical + 8,
     },
     typeSection: {
-        marginBottom: SPACING.pageHorizontalInside,
+        marginBottom: SPACING.pageVertical,
     },
     skillSection: {
-        marginBottom: SPACING.pageHorizontalInside,
-    },
-    labelText: {
-        fontSize: 16,
-        fontWeight: '500',
-        marginBottom: 10,
-        marginLeft: SPACING.pageHorizontalInside,
+        marginBottom: SPACING.pageVertical - 8,
     },
     typeButtonsContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 8,
-        paddingHorizontal: SPACING.pageHorizontalInside,
+        gap: 4,
+        // paddingHorizontal: SPACING.pageHorizontalInside,
+        // paddingVertical: SPACING.pageHorizontalInside,
     },
     typeButton: {
         paddingHorizontal: 14,
         paddingVertical: 8,
-        borderRadius: 16,
-        backgroundColor: 'rgba(100, 100, 100, 0.1)',
+        borderRadius: 10,
         marginRight: 8,
         marginBottom: 8,
     },

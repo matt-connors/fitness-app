@@ -275,7 +275,7 @@ export function useLibraryRoutines(
         
         // Add timeout protection for the refetch
         const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Refresh timeout')), 10000);
+          setTimeout(() => reject(new Error('Refresh timeout')), 20000);
         });
         
         Promise.race([refetch(), timeoutPromise])
