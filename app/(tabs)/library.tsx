@@ -11,14 +11,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ActionSheet } from '@/components/ui/ActionSheet';
 import { SPACING } from '@/constants/Spacing';
 import { useThemeColor } from '@/hooks/useThemeColor';
-import { RoutineType } from '@/lib/graphql/types';
+import { RoutineType, SkillLevel, CreateRoutineInput, mapExerciseToRoutineExerciseInput } from '@/lib/graphql/types';
 import { RoutineCard } from '@/components/routine/RoutineCard';
 import { SearchOverlay } from '@/components/routine/SearchOverlay';
 import { LibraryContent } from '@/components/routine/LibraryContent';
 import { debounce } from '@/utils/debounce';
-import { useLibraryRoutines } from '@/hooks/useLibraryRoutines';
+import { useLibraryRoutines, markRoutinesNeedRefresh } from '@/hooks/useLibraryRoutines';
 import { useLibrarySearch } from '@/hooks/useLibrarySearch';
 import { useActionMenu } from '@/hooks/useActionMenu';
+import { useMutation } from '@apollo/client';
+import { CREATE_ROUTINE } from '@/lib/graphql/mutations';
 
 // Define workout types for filtering
 const WORKOUT_TYPES = [
@@ -33,7 +35,7 @@ const WORKOUT_TYPES = [
 export default function LibraryScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const searchInputRef = useRef<TextInput>(null);
+    const searchInputRef = useRef<TextInput>(null) as React.RefObject<TextInput>;
     
     // State for active tab
     const [activeTab, setActiveTab] = useState<'routines' | 'regiments'>('routines');
@@ -42,6 +44,9 @@ export default function LibraryScreen() {
     const search = useLibrarySearch();
     const routines = useLibraryRoutines(activeTab, search.selectedType);
     const actionMenu = useActionMenu();
+    
+    // GraphQL mutation for creating routines
+    const [createRoutine] = useMutation(CREATE_ROUTINE);
     
     // Use debounce for platform workout loading
     const debouncedLoadMore = useCallback(
@@ -94,9 +99,236 @@ export default function LibraryScreen() {
 
     // Add function to save a platform workout to user workouts
     const saveToUserWorkouts = (workout: any) => {
-        // In a real app, you'd save this to user data
-        console.log(`Saved workout: ${workout.name} to user workouts`);
-        // You would implement actual saving logic here
+        console.log(`[${new Date().toISOString()}] Starting saveToUserWorkouts for "${workout.name}"`);
+        
+        // Create exercises data for the workout
+        // This generates realistic exercises based on the workout type
+        const generateExercisesForWorkout = (workout: any) => {
+            const exerciseCount = workout.exercises || 5;
+            const exercisesByType: Record<string, Array<{name: string}>> = {
+                'Strength': [
+                    { name: 'Bench Press' },
+                    { name: 'Squats' },
+                    { name: 'Deadlifts' },
+                    { name: 'Pull-ups' },
+                    { name: 'Push-ups' },
+                    { name: 'Rows' },
+                    { name: 'Shoulder Press' },
+                    { name: 'Lunges' },
+                    { name: 'Bicep Curls' },
+                    { name: 'Tricep Extensions' }
+                ],
+                'Cardio': [
+                    { name: 'Running' },
+                    { name: 'Jump Rope' },
+                    { name: 'Mountain Climbers' },
+                    { name: 'Burpees' },
+                    { name: 'Jumping Jacks' },
+                    { name: 'High Knees' },
+                    { name: 'Cycling' },
+                    { name: 'Box Jumps' }
+                ],
+                'Flexibility': [
+                    { name: 'Hamstring Stretch' },
+                    { name: 'Quad Stretch' },
+                    { name: 'Hip Flexor Stretch' },
+                    { name: 'Child\'s Pose' },
+                    { name: 'Butterfly Stretch' },
+                    { name: 'Downward Dog' },
+                    { name: 'Shoulder Stretch' }
+                ],
+                'HIIT': [
+                    { name: 'Burpees' },
+                    { name: 'Mountain Climbers' },
+                    { name: 'Jumping Lunges' },
+                    { name: 'Kettlebell Swings' },
+                    { name: 'Plank Jacks' },
+                    { name: 'Battle Ropes' }
+                ],
+                'Yoga': [
+                    { name: 'Downward Dog' },
+                    { name: 'Warrior Pose' },
+                    { name: 'Tree Pose' },
+                    { name: 'Child\'s Pose' },
+                    { name: 'Cobra Pose' },
+                    { name: 'Bridge Pose' }
+                ],
+                'CrossFit': [
+                    { name: 'Box Jumps' },
+                    { name: 'Wall Balls' },
+                    { name: 'Thrusters' },
+                    { name: 'Double Unders' },
+                    { name: 'Kettlebell Swings' },
+                    { name: 'Pull-ups' }
+                ],
+                'Mobility': [
+                    { name: 'Hip Circles' },
+                    { name: 'Shoulder Rotations' },
+                    { name: 'Ankle Mobilization' },
+                    { name: 'Wrist Circles' },
+                    { name: 'Neck Rolls' },
+                    { name: 'T-Spine Rotation' }
+                ]
+            };
+            
+            // Default to strength exercises if the type isn't in our map
+            const defaultType = 'Strength';
+            const typeExercises = exercisesByType[workout.type] || exercisesByType[defaultType];
+            
+            // Pick random exercises from the type list
+            const selectedCount = Math.min(exerciseCount, typeExercises.length);
+            const shuffled = [...typeExercises].sort(() => 0.5 - Math.random());
+            const selectedExercises = shuffled.slice(0, selectedCount);
+            
+            console.log(`[${new Date().toISOString()}] Generated ${selectedExercises.length} exercises for "${workout.name}"`);
+            
+            // Convert to the format needed for our app
+            return selectedExercises.map((exercise, index) => ({
+                // Use timestamp + index for unique IDs that won't conflict
+                id: `temp_${Date.now()}_${index}`,
+                name: exercise.name,
+                allSetsEqual: false,
+                showRpe: true,
+                showExpanded: false,
+                multipleSets: Array(3).fill(0).map((_, i) => ({
+                    setNumber: i + 1,
+                    reps: 8 + Math.floor(Math.random() * 5), // 8-12 reps
+                    weight: workout.type === 'Strength' ? 20 + Math.floor(Math.random() * 80) : undefined,
+                    restPause: 60 + Math.floor(Math.random() * 60), // 60-120 seconds
+                    rpe: Math.floor(Math.random() * 3) + 6, // RPE 6-8
+                })),
+                restPause: 60 + Math.floor(Math.random() * 60),
+                order: index
+            }));
+        };
+        
+        // Map difficulty level to SkillLevel enum
+        const mapDifficultyToSkillLevel = (difficulty: string): SkillLevel => {
+            switch (difficulty?.toLowerCase()) {
+                case 'beginner':
+                    return SkillLevel.Beginner;
+                case 'advanced':
+                    return SkillLevel.Advanced;
+                case 'intermediate':
+                    return SkillLevel.Intermediate;
+                case 'all levels':
+                default:
+                    return SkillLevel.AllLevels;
+            }
+        };
+        
+        // Map type to RoutineType enum
+        const mapTypeToRoutineType = (type: string): RoutineType => {
+            // Direct mappings
+            if (type === 'Strength') return RoutineType.Strength;
+            if (type === 'Flexibility') return RoutineType.Flexibility;
+            if (type === 'Mobility') return RoutineType.Mobility;
+            
+            // Map other types to closest RoutineType
+            if (type === 'Cardio' || type === 'HIIT' || type === 'CrossFit') {
+                return RoutineType.Endurance;
+            }
+            if (type === 'Yoga' || type === 'Balance') {
+                return RoutineType.Balance;
+            }
+            
+            // Default
+            return RoutineType.Strength;
+        };
+        
+        console.log(`[${new Date().toISOString()}] Preparing data for "${workout.name}"`);
+        
+        // Generate exercise data for the workout
+        const generatedExercises = generateExercisesForWorkout(workout);
+        
+        // Convert the generated exercises to the format needed by the GraphQL API
+        const exerciseInputs = generatedExercises.map((exercise, index) => 
+            mapExerciseToRoutineExerciseInput(exercise, index)
+        );
+        
+        // Create routine input - use original name without modification
+        const routineInput: CreateRoutineInput = {
+            name: workout.name,
+            type: mapTypeToRoutineType(workout.type),
+            skillLevel: mapDifficultyToSkillLevel(workout.difficulty),
+            exercises: exerciseInputs
+        };
+        
+        console.log(`[${new Date().toISOString()}] Input data ready, showing confirmation dialog for "${workout.name}"`);
+        
+        // Show confirmation dialog
+        Alert.alert(
+            "Add to Your Routines",
+            `Save "${workout.name}" to your routines?`,
+            [
+                {
+                    text: "Cancel",
+                    style: "cancel"
+                },
+                {
+                    text: "Save",
+                    onPress: () => {
+                        console.log(`[${new Date().toISOString()}] User confirmed save for "${workout.name}"`);
+                        
+                        // Show a toast notification immediately for feedback
+                        showToast(`Adding "${workout.name}" to your routines...`);
+                        
+                        // Let the dialog dismiss before starting the mutation
+                        // This improves perceived performance
+                        setTimeout(() => {
+                            console.log(`[${new Date().toISOString()}] Starting GraphQL mutation for "${workout.name}"`);
+                            
+                            // Execute the create routine mutation
+                            createRoutine({
+                                variables: {
+                                    input: routineInput
+                                }
+                            }).then(({ data, errors }) => {
+                                console.log(`[${new Date().toISOString()}] GraphQL mutation completed for "${workout.name}"`);
+                                
+                                if (errors) {
+                                    console.error('Error creating routine:', errors);
+                                    showToast(`Failed to add "${workout.name}"`, 'error');
+                                    return;
+                                }
+                                
+                                if (data?.createRoutine) {
+                                    console.log(`[${new Date().toISOString()}] Successfully saved "${workout.name}" to user routines`);
+                                    
+                                    // Mark cache for refresh
+                                    console.log(`[${new Date().toISOString()}] Marking cache for refresh`);
+                                    markRoutinesNeedRefresh();
+                                    
+                                    // Notify user of success with a non-blocking toast
+                                    showToast(`"${workout.name}" added to your routines`, 'success');
+                                    
+                                    // Force a quick refresh
+                                    routines.refreshOnFocus();
+                                }
+                            }).catch((error) => {
+                                console.error(`[${new Date().toISOString()}] Error saving routine:`, error);
+                                showToast(`Error adding "${workout.name}"`, 'error');
+                            });
+                        }, 300); // Short delay to ensure dialog dismisses first
+                    }
+                }
+            ]
+        );
+    };
+    
+    // Simple toast notification function (you should replace this with a proper Toast component)
+    const showToast = (message: string, type: 'info' | 'success' | 'error' = 'info') => {
+        // In a real app, you'd show a non-blocking toast/snackbar
+        console.log(`[TOAST] ${type.toUpperCase()}: ${message}`);
+        
+        // For now, we'll just log the message, but in a real app you'd use:
+        // Toast.show({
+        //   type: type,
+        //   text1: message,
+        //   visibilityTime: 2000,
+        //   autoHide: true,
+        //   topOffset: 60
+        // });
     };
 
     // Handle menu actions
