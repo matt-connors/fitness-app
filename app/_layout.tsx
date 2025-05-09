@@ -6,6 +6,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
@@ -62,22 +63,24 @@ function RootLayoutNav() {
     };
 
     return (
-        <GraphQLProvider>
-            <ThemeProvider value={theme}>
-                <ActiveWorkoutProvider>
-                    <Stack>
-                        {/* 
-                            Note: The (tabs) route has its own ActiveWorkoutProvider
-                            This allows standalone screens to still access context
-                        */}
-                        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                        <Stack.Screen name="create-workout" options={{ headerShown: false }} />
-                        <Stack.Screen name="create-routine" options={{ headerShown: false }} />
-                        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                    </Stack>
-                    <StatusBar style="auto" />
-                </ActiveWorkoutProvider>
-            </ThemeProvider>
-        </GraphQLProvider>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <GraphQLProvider>
+                <ThemeProvider value={theme}>
+                    <ActiveWorkoutProvider>
+                        <Stack>
+                            {/* 
+                                Note: The (tabs) route has its own ActiveWorkoutProvider
+                                This allows standalone screens to still access context
+                            */}
+                            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                            <Stack.Screen name="create-workout" options={{ headerShown: false }} />
+                            <Stack.Screen name="create-routine" options={{ headerShown: false }} />
+                            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                        </Stack>
+                        <StatusBar style="auto" />
+                    </ActiveWorkoutProvider>
+                </ThemeProvider>
+            </GraphQLProvider>
+        </GestureHandlerRootView>
     );
 }

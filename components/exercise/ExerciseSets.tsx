@@ -32,6 +32,7 @@ const ExerciseSets: React.FC<ExerciseSetsProps> = ({
   const textColorMuted = useThemeColor('textMuted');
   const accentColor = useThemeColor('brand');
   const contrastBackgroundColor = useThemeColor('backgroundContrast');
+  const subBackgroundColor = useThemeColor('backgroundSubtleContrast');
   const borderStrongerColor = useThemeColor('borderStronger');
   const backgroundColor = useThemeColor('background');
   const deleteButtonColor = '#FF3B30'; // iOS-like red color for delete
@@ -393,7 +394,7 @@ const ExerciseSets: React.FC<ExerciseSetsProps> = ({
                           fontSize: 16,
                           color: textColor,
                           borderColor: borderStrongerColor,
-                          backgroundColor: contrastBackgroundColor,
+                          backgroundColor: subBackgroundColor,
                         }}
                         keyboardType="number-pad"
                         placeholder="Any"
@@ -418,7 +419,7 @@ const ExerciseSets: React.FC<ExerciseSetsProps> = ({
                           fontSize: 16,
                           color: textColor,
                           borderColor: borderStrongerColor,
-                          backgroundColor: contrastBackgroundColor,
+                          backgroundColor: subBackgroundColor,
                         }}
                         keyboardType="number-pad"
                         placeholder="Any"

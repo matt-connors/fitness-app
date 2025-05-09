@@ -8,28 +8,52 @@ import {
     Dimensions,
     ScrollView,
     PanResponder,
-    Easing
+    Easing,
+    TouchableOpacity,
+    Alert
 } from 'react-native';
 import { ThemedText } from '../ThemedText';
+import { ThemedView } from '../ThemedView';
+import { ThemedSection } from '../ThemedSection';
 import { PlatformPressable } from '@react-navigation/elements';
 import { useActiveWorkout } from '@/components/ActiveWorkoutProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Clock, Play, Pause, Plus, ChevronDown, Square, BarChart, CircleStop, EllipsisVertical, EllipsisIcon, Notebook, NotebookIcon, StickyNote, NotepadText } from 'lucide-react-native';
+import { Search, Plus, ChevronDown, Trash2, X, MoreVertical } from 'lucide-react-native';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { SPACING } from '@/constants/Spacing';
+import ExerciseSets from '@/components/exercise/ExerciseSets';
+import RpeTooltip from '@/components/exercise/RpeTooltip';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 interface ActiveWorkoutDrawerProps {
     isVisible: boolean;
     onClose: () => void;
 }
 
+// Mock data for available exercises
+const AVAILABLE_EXERCISES = [
+    { id: '1', name: 'Bench Press', muscle: 'Chest', equipment: 'Barbell' },
+    { id: '2', name: 'Squat', muscle: 'Legs', equipment: 'Barbell' },
+    { id: '3', name: 'Deadlift', muscle: 'Back', equipment: 'Barbell' },
+    { id: '4', name: 'Overhead Press', muscle: 'Shoulders', equipment: 'Barbell' },
+    { id: '5', name: 'Pull-up', muscle: 'Back', equipment: 'Bodyweight' },
+    { id: '6', name: 'Push-up', muscle: 'Chest', equipment: 'Bodyweight' },
+    { id: '7', name: 'Dumbbell Curl', muscle: 'Biceps', equipment: 'Dumbbell' },
+    { id: '8', name: 'Tricep Extension', muscle: 'Triceps', equipment: 'Cable' },
+    { id: '9', name: 'Leg Press', muscle: 'Legs', equipment: 'Machine' },
+    { id: '10', name: 'Lat Pulldown', muscle: 'Back', equipment: 'Cable' },
+];
+
 export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerProps) {
     const insets = useSafeAreaInsets();
     const { activeWorkout, togglePauseWorkout, stopActiveWorkout, elapsedTime, updateWorkoutName } = useActiveWorkout();
     const [workoutName, setWorkoutName] = useState(() => activeWorkout?.name || 'New Workout');
+
+    // Exercise state management
     const [exercises, setExercises] = useState<Array<{
         id: string;
         name: string;
+        showRpe: boolean;
         sets: Array<{
             id: string;
             weight: string;
@@ -40,6 +64,7 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         {
             id: '1',
             name: 'Bench Press',
+            showRpe: false,
             sets: [
                 { id: '1-1', weight: '135', reps: '10', completed: false },
                 { id: '1-2', weight: '155', reps: '8', completed: false },
@@ -49,6 +74,7 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         {
             id: '2',
             name: 'Squats',
+            showRpe: false,
             sets: [
                 { id: '2-1', weight: '185', reps: '10', completed: false },
                 { id: '2-2', weight: '225', reps: '8', completed: false },
@@ -56,6 +82,11 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
             ]
         }
     ]);
+
+    // Exercise dropdown management
+    const [showExerciseDropdown, setShowExerciseDropdown] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filteredExercises, setFilteredExercises] = useState(AVAILABLE_EXERCISES);
 
     // Animation states
     const [isAnimatingOut, setIsAnimatingOut] = useState(false);
@@ -70,13 +101,16 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
     // Theme colors
     const textColor = useThemeColor('text');
     const textSecondary = useThemeColor('textSecondary');
+    const textMuted = useThemeColor('textMuted');
     const borderColor = useThemeColor('border');
+    const borderStrongerColor = useThemeColor('borderStronger');
     const accentColor = useThemeColor('brand');
+    const accentTextColor = useThemeColor('brandText');
     const subtleBackground = useThemeColor('backgroundSubtleContrast');
+    const contrastBackground = useThemeColor('backgroundContrast');
     const backgroundColor = useThemeColor('background');
 
     const screenHeight = Dimensions.get('window').height;
-    // Adjust the drawer height to account for safe areas properly
     const DRAWER_HEIGHT = screenHeight;
     const CLOSE_THRESHOLD = 50;
 
@@ -92,6 +126,22 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         setWorkoutName(name);
         updateWorkoutName(name);
     };
+
+    // Filter exercises based on search
+    useEffect(() => {
+        if (searchQuery.trim() === '') {
+            setFilteredExercises(AVAILABLE_EXERCISES);
+        } else {
+            const query = searchQuery.toLowerCase();
+            setFilteredExercises(
+                AVAILABLE_EXERCISES.filter(exercise =>
+                    exercise.name.toLowerCase().includes(query) ||
+                    exercise.muscle.toLowerCase().includes(query) ||
+                    exercise.equipment.toLowerCase().includes(query)
+                )
+            );
+        }
+    }, [searchQuery]);
 
     // Track when user has started dragging
     const [isDragging, setIsDragging] = useState(false);
@@ -262,18 +312,49 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         }));
     };
 
+    const removeSet = (exerciseId: string, setIndex: number) => {
+        setExercises(
+            exercises.map(exercise => {
+                if (exercise.id === exerciseId) {
+                    // Don't allow removing the last set
+                    if (exercise.sets.length <= 1) {
+                        return exercise;
+                    }
+
+                    // Remove the set at the specified index
+                    const updatedSets = [...exercise.sets];
+                    updatedSets.splice(setIndex, 1);
+
+                    // Renumber the set IDs
+                    updatedSets.forEach((set, idx) => {
+                        set.id = `${exerciseId}-${idx + 1}`;
+                    });
+
+                    return { ...exercise, sets: updatedSets };
+                }
+                return exercise;
+            })
+        );
+    };
+
     const addExercise = () => {
         const newId = (exercises.length + 1).toString();
         setExercises([
             ...exercises,
             {
                 id: newId,
-                name: 'New Exercise',
+                name: 'Select an exercise',
+                showRpe: false,
                 sets: [
                     { id: `${newId}-1`, weight: '0', reps: '0', completed: false }
                 ]
             }
         ]);
+
+        // Open dropdown for the new exercise
+        setTimeout(() => {
+            setShowExerciseDropdown(newId);
+        }, 100);
     };
 
     const updateExerciseName = (id: string, name: string) => {
@@ -285,6 +366,16 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         }));
     };
 
+    const removeExercise = (id: string) => {
+        setExercises(exercises.filter(exercise => exercise.id !== id));
+    };
+
+    const selectExercise = (exerciseId: string, selectedExercise: any) => {
+        updateExerciseName(exerciseId, selectedExercise.name);
+        setShowExerciseDropdown(null);
+        setSearchQuery('');
+    };
+
     // Calculate combined transform for both opening animation and drag gesture
     const combinedTransform = Animated.add(
         Animated.multiply(
@@ -294,193 +385,352 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         drawerTranslateY
     );
 
+    const [showRpeTooltip, setShowRpeTooltip] = useState<string | null>(null);
+    const [showRirTooltip, setShowRirTooltip] = useState<string | null>(null);
+
+    // Map our exercises to the Exercise type expected by ExerciseSets
+    const mapExerciseForSets = (exercise: any) => {
+        return {
+            id: exercise.id,
+            name: exercise.name,
+            allSetsEqual: false, // Always use multiple sets mode in the workout
+            showRpe: exercise.showRpe,
+            showExpanded: false,
+            multipleSets: exercise.sets.map((set: any, index: number) => ({
+                setNumber: index + 1,
+                reps: set.reps,
+                weight: set.weight,
+                rpe: undefined,
+                tempo: undefined,
+                completed: set.completed,
+                showExpanded: false
+            }))
+        };
+    };
+
+    const toggleRpeMode = (exerciseId: string) => {
+        setExercises(exercises.map(exercise => {
+            if (exercise.id === exerciseId) {
+                return {
+                    ...exercise,
+                    showRpe: !exercise.showRpe
+                };
+            }
+            return exercise;
+        }));
+    };
+
     if (!isVisible && !isAnimatingOut) {
         return null;
     }
 
-    return (
-        <View style={styles.container}>
-            <TouchableWithoutFeedback onPress={closeDrawerWithGesture}>
-                <Animated.View
-                    style={[
-                        styles.backdrop,
-                        {
-                            opacity: drawerAnim.interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [0, 0.7],
-                            }),
-                        },
-                    ]}
-                />
-            </TouchableWithoutFeedback>
-
-            <Animated.View
-                style={[
-                    styles.drawer,
-                    {
-                        backgroundColor,
-                        transform: [
-                            {
-                                translateY: combinedTransform
-                            },
-                        ],
-                        paddingBottom: insets.bottom,
-                        height: DRAWER_HEIGHT,
-                    },
-                ]}
-            >
-                <View style={styles.drawerContent}>
-                    {/* Header */}
-                    <View
-                        style={[
-                            styles.headerSection,
-                            { paddingTop: insets.top + 5 || 20 } // Ensure proper safe area spacing
-                        ]}
-                        {...panResponder.panHandlers}
-                    >
-                        <PlatformPressable onPress={closeDrawerWithGesture} style={styles.closeButton}>
-                            <ChevronDown size={24} color={textColor} />
-                        </PlatformPressable>
-
-                        {/* <ThemedText style={styles.title}>Current Workout</ThemedText> */}
-
-                        <PlatformPressable
-                            onPress={handleEndWorkout}
-                            style={styles.endButton}
+    // Render a single exercise item
+    const renderExerciseItem = (exercise: any, index: number) => {
+        return (
+            <View style={{
+                marginBottom: SPACING.pageVertical
+            }}>
+                {/* Exercise Content */}
+                <ThemedSection style={{
+                    paddingHorizontal: SPACING.pageHorizontalInside,
+                    paddingVertical: SPACING.pageHorizontalInside,
+                }}>
+                    {/* Exercise Name Dropdown */}
+                    <View style={{
+                        flexDirection: 'row',
+                        gap: SPACING.pageHorizontalInside,
+                        alignItems: 'center',
+                    }}>
+                        <TouchableOpacity
+                            style={{
+                                flexDirection: 'row',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                paddingHorizontal: 12,
+                                paddingVertical: 10,
+                                borderColor: borderStrongerColor,
+                                borderWidth: 1,
+                                borderRadius: 10,
+                                height: 42,
+                                flex: 1,
+                            }}
+                            onPress={() => {
+                                setSearchQuery('');
+                                setFilteredExercises(AVAILABLE_EXERCISES);
+                                setShowExerciseDropdown(exercise.id);
+                            }}
                         >
-                            <EllipsisIcon size={24} color={textColor} />
-                        </PlatformPressable>
+                            <ThemedText style={[
+                                exercise.name !== 'Select an exercise' ?
+                                    { fontSize: 16, fontWeight: '400' } :
+                                    { fontSize: 16, fontWeight: '400', opacity: 0.5 }
+                            ]}>
+                                {exercise.name}
+                            </ThemedText>
+                            <ChevronDown size={20} color={textMuted} />
+                        </TouchableOpacity>
+                        {/* Delete Exercise Button */}
+                        <TouchableOpacity
+                            style={{
+                                width: 42,
+                                height: 42,
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: 10,
+                            }}
+                            onPress={() => removeExercise(exercise.id)}
+                            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                        >
+                            <Trash2 size={20} color={textMuted} strokeWidth={1.7} />
+                        </TouchableOpacity>
                     </View>
 
-                    {/* Workout Name and Timer */}
-                    <View style={styles.workoutNameContainer}>
-                        <TextInput
-                            style={[styles.workoutNameInput, { color: textColor }]}
-                            value={workoutName}
-                            onChangeText={handleWorkoutNameChange}
-                            placeholder="Workout Name"
-                            placeholderTextColor={textColor + '80'}
+                    {/* Sets Section using ExerciseSets component */}
+                    <View style={{ marginTop: 20 }}>
+                        <ExerciseSets
+                            exercise={mapExerciseForSets(exercise)}
+                            onUpdateExercise={(id, field, value) => {
+                                // Handle updates to the exercise
+                                if (field === 'name') {
+                                    updateExerciseName(id, value as string);
+                                } else if (field === 'showRpe') {
+                                    toggleRpeMode(id);
+                                }
+                            }}
+                            onUpdateSet={(exerciseId, setIndex, field, value) => {
+                                // Map to our local updateSet function format
+                                if (field === 'reps' || field === 'weight') {
+                                    updateSet(exerciseId, exercise.sets[setIndex].id, field, value.toString());
+                                } else if (field === 'completed') {
+                                    toggleSetCompleted(exerciseId, exercise.sets[setIndex].id);
+                                }
+                            }}
+                            onAddSetToExercise={addSet}
+                            setShowRpeTooltip={setShowRpeTooltip}
+                            setShowRirTooltip={setShowRirTooltip}
+                            onRemoveSet={removeSet}
                         />
-                        <View style={styles.timerContainer}>
-                            <PlatformPressable
-                                onPress={togglePause}
+                    </View>
+                </ThemedSection>
+            </View>
+        );
+    };
+
+    // Exercise Select Modal component
+    const ExerciseSelectModal = ({ visible, exerciseId }: { visible: boolean, exerciseId: string }) => {
+        if (!visible) return null;
+
+        return (
+            <GestureHandlerRootView style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 1200 }}>
+                <View style={styles.modalOverlay}>
+                    <View style={[styles.modalContent, { backgroundColor }]}>
+                        <View style={styles.modalHeader}>
+                            <ThemedText style={styles.modalTitle}>Select Exercise</ThemedText>
+                            <TouchableOpacity onPress={() => setShowExerciseDropdown(null)}>
+                                <X size={24} color={textColor} strokeWidth={1.7} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={[styles.searchContainer, { borderColor }]}>
+                            <Search size={20} color={textMuted} strokeWidth={1.7} />
+                            <TextInput
+                                style={[styles.searchInput, { color: textColor }]}
+                                placeholder="Search exercises..."
+                                placeholderTextColor={textMuted}
+                                value={searchQuery}
+                                onChangeText={setSearchQuery}
+                                autoFocus
+                            />
+                            {searchQuery.length > 0 && (
+                                <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                    <X size={20} color={textMuted} strokeWidth={1.7} />
+                                </TouchableOpacity>
+                            )}
+                        </View>
+
+                        <ScrollView style={styles.exerciseList}>
+                            {filteredExercises.map((exercise, index) => (
+                                <TouchableOpacity
+                                    key={exercise.id}
+                                    style={[
+                                        styles.exerciseListItem,
+                                        {
+                                            borderTopWidth: index > 0 ? StyleSheet.hairlineWidth : 0,
+                                            borderTopColor: borderStrongerColor
+                                        }
+                                    ]}
+                                    onPress={() => selectExercise(exerciseId, exercise)}
+                                >
+                                    <View style={{ flex: 1 }}>
+                                        <ThemedText style={styles.exerciseListItemName}>
+                                            {exercise.name}
+                                        </ThemedText>
+                                        <ThemedText style={[styles.exerciseListItemDetails, { color: textSecondary }]}>
+                                            {exercise.muscle} • {exercise.equipment}
+                                        </ThemedText>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+
+                            {filteredExercises.length === 0 && (
+                                <View style={styles.noResultsContainer}>
+                                    <ThemedText style={[styles.noResultsText, { color: textMuted }]}>
+                                        No exercises found
+                                    </ThemedText>
+                                </View>
+                            )}
+                        </ScrollView>
+                    </View>
+                </View>
+            </GestureHandlerRootView>
+        );
+    };
+
+    // List Footer Component (Add Exercise Button)
+    const ListFooter = () => (
+        <View>
+            {/* Add Exercise Button */}
+            <TouchableOpacity
+                style={[styles.addExerciseButton, { backgroundColor: contrastBackground }]}
+                onPress={addExercise}
+            >
+                <Plus size={20} color={textColor} strokeWidth={1.7} />
+                <ThemedText style={[styles.addExerciseText, { color: textColor }]}>
+                    Add Exercise
+                </ThemedText>
+            </TouchableOpacity>
+
+            {/* Extra padding at the bottom */}
+            <View style={{ height: 100 }} />
+        </View>
+    );
+
+    return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+            <ThemedView style={styles.container}>
+                <TouchableWithoutFeedback onPress={closeDrawerWithGesture}>
+                    <Animated.View
+                        style={[
+                            styles.backdrop,
+                            {
+                                opacity: drawerAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0, 0.7],
+                                }),
+                            },
+                        ]}
+                    />
+                </TouchableWithoutFeedback>
+
+                <Animated.View
+                    style={[
+                        styles.drawer,
+                        {
+                            backgroundColor,
+                            transform: [
+                                {
+                                    translateY: combinedTransform
+                                },
+                            ],
+                            paddingBottom: insets.bottom,
+                            height: DRAWER_HEIGHT,
+                        },
+                    ]}
+                >
+                    <View style={styles.drawerContent}>
+                        {/* Header */}
+                        <View
+                            style={[
+                                styles.headerSection,
+                                { paddingTop: insets.top + 5 || 20 } // Ensure proper safe area spacing
+                            ]}
+                            {...panResponder.panHandlers}
+                        >
+                            <PlatformPressable onPress={closeDrawerWithGesture} style={styles.closeButton}>
+                                <ChevronDown size={24} color={textColor} strokeWidth={1.7} />
+                            </PlatformPressable>
+
+                            <TouchableOpacity
+                                onPress={handleEndWorkout}
+                                style={styles.endButton}
                             >
+                                <ThemedText style={{ fontSize: 14, color: textColor }}>End Workout</ThemedText>
+                            </TouchableOpacity>
+                        </View>
+
+                        {/* Workout Name and Timer */}
+                        <View style={styles.workoutNameContainer}>
+                            <TextInput
+                                style={[styles.workoutNameInput, { color: textColor }]}
+                                value={workoutName}
+                                onChangeText={handleWorkoutNameChange}
+                                placeholder="Workout Name"
+                                placeholderTextColor={textColor + '80'}
+                            />
+                            <PlatformPressable onPress={togglePause}>
                                 <ThemedText style={[styles.timerText, { color: textSecondary }]}>
                                     {elapsedTime}
                                 </ThemedText>
                             </PlatformPressable>
                         </View>
-                        <View style={styles.workoutNotesContainer}>
-                            {/* <NotepadText size={18} color={textColor} /> */}
-                            <TextInput
-                                style={[styles.workoutNotesInput, { color: textSecondary }]}
-                                placeholder="Add workout notes"
-                                placeholderTextColor={textColor + '80'}
-                            />
-                        </View>
 
-                    </View>
-
-                    {/* Exercises */}
-                    <Animated.ScrollView
-                        ref={scrollViewRef}
-                        style={styles.content}
-                        contentContainerStyle={styles.contentContainer}
-                        showsVerticalScrollIndicator={true}
-                        onScroll={handleScroll}
-                        scrollEventThrottle={16}
-                        scrollEnabled={!isDragging} // Disable scrolling when dragging from the top
-                    >
-                        {exercises.map((exercise, exerciseIndex) => (
-                            <View
-                                key={exercise.id}
-                                style={[styles.exerciseCard, { backgroundColor: subtleBackground }]}
+                        {/* Main Content Area */}
+                        <View style={[
+                            styles.content,
+                            {
+                                paddingHorizontal: SPACING.pageHorizontal,
+                            }
+                        ]}>
+                            {/* Exercises */}
+                            <Animated.ScrollView
+                                ref={scrollViewRef}
+                                style={{ flex: 1 }}
+                                contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+                                showsVerticalScrollIndicator={false}
+                                onScroll={handleScroll}
+                                scrollEventThrottle={16}
+                                scrollEnabled={!isDragging} // Disable scrolling when dragging from the top
                             >
-                                <View style={styles.exerciseHeader}>
-                                    <View style={styles.exerciseNameContainer}>
-                                        <ThemedText style={styles.exerciseNumber}>#{exerciseIndex + 1}</ThemedText>
-                                        <TextInput
-                                            style={styles.exerciseNameInput}
-                                            value={exercise.name}
-                                            onChangeText={(text) => updateExerciseName(exercise.id, text)}
-                                        />
-                                    </View>
-                                    <BarChart size={18} color={textColor} />
+                                {/* Exercises Section Header */}
+                                <View style={styles.exercisesSection}>
+                                    <ThemedText style={[styles.sectionHeader, { color: textMuted }]}>Exercises</ThemedText>
                                 </View>
 
-                                <View style={styles.setsTableHeader}>
-                                    <ThemedText style={[styles.setsTableCell, styles.setsTableHeaderText]}>SET</ThemedText>
-                                    <ThemedText style={[styles.setsTableCell, styles.setsTableHeaderText]}>WEIGHT</ThemedText>
-                                    <ThemedText style={[styles.setsTableCell, styles.setsTableHeaderText]}>REPS</ThemedText>
-                                    <ThemedText style={[styles.setsTableCell, styles.setsTableHeaderText, styles.setsTableCheckColumn]}>✓</ThemedText>
-                                </View>
-
-                                {exercise.sets.map((set, setIndex) => (
-                                    <View
-                                        key={set.id}
-                                        style={[
-                                            styles.setRow,
-                                            set.completed && styles.completedSetRow
-                                        ]}
-                                    >
-                                        <ThemedText style={styles.setsTableCell}>{setIndex + 1}</ThemedText>
-
-                                        <View style={styles.setsTableCell}>
-                                            <TextInput
-                                                style={styles.setInput}
-                                                value={set.weight}
-                                                onChangeText={(value) => updateSet(exercise.id, set.id, 'weight', value)}
-                                                keyboardType="numeric"
-                                            />
-                                        </View>
-
-                                        <View style={styles.setsTableCell}>
-                                            <TextInput
-                                                style={styles.setInput}
-                                                value={set.reps}
-                                                onChangeText={(value) => updateSet(exercise.id, set.id, 'reps', value)}
-                                                keyboardType="numeric"
-                                            />
-                                        </View>
-
-                                        <PlatformPressable
-                                            style={[styles.setsTableCell, styles.setsTableCheckColumn]}
-                                            onPress={() => toggleSetCompleted(exercise.id, set.id)}
-                                        >
-                                            <View style={[styles.checkbox, set.completed && { backgroundColor: accentColor, borderColor: accentColor }]}>
-                                                {set.completed && (
-                                                    <ThemedText style={styles.checkmark}>✓</ThemedText>
-                                                )}
-                                            </View>
-                                        </PlatformPressable>
-                                    </View>
+                                {/* Exercise List */}
+                                {exercises.map((exercise, index) => (
+                                    renderExerciseItem(exercise, index)
                                 ))}
 
-                                <PlatformPressable
-                                    style={styles.addSetButton}
-                                    onPress={() => addSet(exercise.id)}
-                                >
-                                    <Plus size={16} color={accentColor} />
-                                    <ThemedText style={[styles.addSetText, { color: accentColor }]}>
-                                        Add Set
-                                    </ThemedText>
-                                </PlatformPressable>
-                            </View>
-                        ))}
+                                {/* List Footer with Add Exercise button */}
+                                <ListFooter />
+                            </Animated.ScrollView>
+                        </View>
+                    </View>
+                </Animated.View>
 
-                        <PlatformPressable
-                            style={[styles.addExerciseButton, { borderColor }]}
-                            onPress={addExercise}
-                        >
-                            <Plus size={20} color={accentColor} />
-                            <ThemedText style={[styles.addExerciseText, { color: accentColor }]}>
-                                Add Exercise
-                            </ThemedText>
-                        </PlatformPressable>
-                    </Animated.ScrollView>
-                </View>
-            </Animated.View>
-        </View>
+                {/* Exercise Selection Modal */}
+                {showExerciseDropdown && (
+                    <ExerciseSelectModal
+                        visible={!!showExerciseDropdown}
+                        exerciseId={showExerciseDropdown}
+                    />
+                )}
+
+                {/* RPE Info Tooltip */}
+                <RpeTooltip
+                    visible={showRpeTooltip !== null}
+                    onClose={() => setShowRpeTooltip(null)}
+                    type="rpe"
+                />
+
+                {/* RIR Info Tooltip */}
+                <RpeTooltip
+                    visible={showRirTooltip !== null}
+                    onClose={() => setShowRirTooltip(null)}
+                    type="rir"
+                />
+            </ThemedView>
+        </GestureHandlerRootView>
     );
 }
 
@@ -516,158 +766,118 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         alignItems: 'center',
     },
-    title: {
-        fontSize: 18,
-        fontWeight: '500',
-    },
     closeButton: {
         padding: 4,
     },
     endButton: {
-        padding: 4,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderWidth: 1,
+        borderColor: 'rgba(150, 150, 150, 0.3)',
+        borderRadius: 16,
     },
     workoutNameContainer: {
         paddingHorizontal: SPACING.pageHorizontal,
-        marginBottom: 16,
+        marginBottom: 22,
     },
     workoutNameInput: {
         fontSize: 28,
         fontWeight: '500',
         marginTop: 8,
-        marginBottom: 1,
-    },
-    workoutNotesContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 22,
-    },
-    timerContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 22,
+        marginBottom: 8,
     },
     timerText: {
         fontSize: 16,
         fontWeight: '400'
     },
-    workoutNotesInput: {
-        fontSize: 14,
-        fontWeight: '400',
-    },
-    pauseButton: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
     content: {
         flex: 1,
     },
-    contentContainer: {
-        paddingHorizontal: SPACING.pageHorizontal,
-        paddingBottom: 100,
+    exercisesSection: {
+        marginTop: 14,
     },
-    exerciseCard: {
-        marginBottom: 16,
-        borderRadius: 12,
-        padding: 16,
-    },
-    exerciseHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 16,
-    },
-    exerciseNameContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-    },
-    exerciseNumber: {
-        fontSize: 14,
-        fontWeight: '600',
-        opacity: 0.7,
-    },
-    exerciseNameInput: {
-        fontSize: 18,
-        fontWeight: '600',
-        flex: 1,
-    },
-    setsTableHeader: {
-        flexDirection: 'row',
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(140, 140, 140, 0.2)',
-        paddingBottom: 8,
-        marginBottom: 12,
-    },
-    setsTableHeaderText: {
-        fontSize: 12,
-        fontWeight: '600',
-        opacity: 0.7,
-    },
-    setsTableCell: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    setsTableCheckColumn: {
-        flex: 0.5,
-    },
-    setRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingVertical: 8,
-        borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: 'rgba(140, 140, 140, 0.1)',
-    },
-    completedSetRow: {
-        opacity: 0.7,
-    },
-    setInput: {
-        textAlign: 'center',
-        minWidth: 50,
-        fontSize: 16,
-    },
-    checkbox: {
-        width: 24,
-        height: 24,
-        borderRadius: 12,
-        borderWidth: 2,
-        borderColor: 'rgba(140, 140, 140, 0.5)',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    checkmark: {
-        color: '#fff',
-        fontSize: 14,
-    },
-    addSetButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 12,
-        marginTop: 12,
-        gap: 8,
-    },
-    addSetText: {
-        fontSize: 14,
+    sectionHeader: {
+        fontSize: 13,
         fontWeight: '500',
+        marginBottom: 12,
     },
     addExerciseButton: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: 14,
-        borderWidth: 1,
-        borderRadius: 12,
-        borderStyle: 'dashed',
-        marginBottom: 40,
+        borderRadius: 10,
+        height: 42,
+        marginTop: 4,
     },
     addExerciseText: {
         marginLeft: 8,
         fontSize: 16,
-        fontWeight: '500',
+        fontWeight: '400',
+    },
+    // Modal styles
+    modalOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        zIndex: 1200,
+    },
+    modalContent: {
+        width: '90%',
+        maxHeight: '80%',
+        borderRadius: 12,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+    },
+    searchContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        borderWidth: 1,
+        borderRadius: 10,
+        paddingHorizontal: 12,
+        height: 46,
+        marginBottom: 16,
+    },
+    searchInput: {
+        flex: 1,
+        height: '100%',
+        paddingHorizontal: 10,
+        fontSize: 16,
+    },
+    exerciseList: {
+        maxHeight: 400,
+    },
+    exerciseListItem: {
+        paddingVertical: 12,
+        borderTopWidth: 0.5,
+    },
+    exerciseListItemName: {
+        fontSize: 16,
+        fontWeight: '400',
+        marginBottom: 4,
+    },
+    exerciseListItemDetails: {
+        fontSize: 12,
+    },
+    noResultsContainer: {
+        padding: 20,
+        alignItems: 'center',
+    },
+    noResultsText: {
+        fontSize: 16,
     },
 }); 
