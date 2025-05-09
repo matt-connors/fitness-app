@@ -22,13 +22,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery, useMutation } from '@apollo/client';
 import { GET_ROUTINE_DETAILS } from '@/lib/graphql/queries';
 import { CREATE_ROUTINE, UPDATE_ROUTINE } from '@/lib/graphql/mutations';
-import { 
-    Routine, 
-    RoutineType, 
-    SkillLevel, 
-    RoutineExercise, 
-    mapRoutineExerciseToExercise, 
-    mapExerciseToRoutineExerciseInput 
+import {
+    Routine,
+    RoutineType,
+    SkillLevel,
+    RoutineExercise,
+    mapRoutineExerciseToExercise,
+    mapExerciseToRoutineExerciseInput
 } from '@/lib/graphql/types';
 
 
@@ -36,10 +36,10 @@ export default function CreateRoutineScreen() {
     const router = useRouter();
     const params = useLocalSearchParams();
     const insets = useSafeAreaInsets();
-    
+
     // Use a ref to track if we've initialized the data
     const hasInitialized = useRef(false);
-    
+
     // Check if we're in edit mode
     const isEditMode = params.mode === 'edit';
     const workoutId = params.workoutId as string | undefined;
@@ -100,30 +100,30 @@ export default function CreateRoutineScreen() {
     // Load workout data from GraphQL if in edit mode
     useEffect(() => {
         if (hasInitialized.current || !isEditMode || !workoutId) return;
-        
+
         if (routineLoading) return;
-        
+
         if (routineError) {
             console.error('Error loading routine:', routineError);
             Alert.alert('Error', 'Failed to load routine details');
             return;
         }
-        
+
         if (routineData?.routine) {
             const routine = routineData.routine;
             setRoutineName(routine.name);
             setRoutineType(routine.type as RoutineType);
             setRoutineSkillLevel(routine.skillLevel as SkillLevel);
-            
+
             if (routine.routineExercises && routine.routineExercises.length > 0) {
                 const routineExercises = routine.routineExercises
                     .sort((a: RoutineExercise, b: RoutineExercise) => a.order - b.order)
                     .map((re: RoutineExercise) => mapRoutineExerciseToExercise(re))
                     .filter(Boolean);
-                
+
                 setExercises(routineExercises);
             }
-            
+
             hasInitialized.current = true;
         }
     }, [routineData, routineLoading, routineError, isEditMode, workoutId]);
@@ -282,19 +282,19 @@ export default function CreateRoutineScreen() {
                             }]
                         };
                     }
-                    
+
                     // Remove the set at the specified index
                     const updatedSets = [...exercise.multipleSets];
                     updatedSets.splice(setIndex, 1);
-                    
+
                     // Renumber the remaining sets
                     updatedSets.forEach((set, idx) => {
                         set.setNumber = idx + 1;
                     });
-                    
+
                     // Play haptic feedback when a set is removed
                     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    
+
                     return { ...exercise, multipleSets: updatedSets };
                 }
                 return exercise;
@@ -363,7 +363,7 @@ export default function CreateRoutineScreen() {
 
         try {
             // Map exercises to the format expected by the GraphQL API
-            const exerciseInputs = exercises.map((exercise, index) => 
+            const exerciseInputs = exercises.map((exercise, index) =>
                 mapExerciseToRoutineExerciseInput(exercise, index)
             );
 
@@ -438,7 +438,7 @@ export default function CreateRoutineScreen() {
         return (
             <View style={{
                 marginBottom: index === exercises.length - 1 ? 0 : SPACING.pageHorizontalInside / 2
-             }}>
+            }}>
                 {/* Drag handle as a separate component */}
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                     <TouchableOpacity
@@ -534,7 +534,7 @@ export default function CreateRoutineScreen() {
             </ThemedSection>
 
             {/* Routine Type Selector */}
-            <ThemedText style={styles.sectionHeader}>Routine Type</ThemedText>
+            <ThemedText style={[styles.sectionHeader, { color: textColorMuted }]}>Routine Type</ThemedText>
             <View style={styles.typeSection}>
                 <View style={styles.typeButtonsContainer}>
                     {Object.values(RoutineType).map((type) => (
@@ -559,7 +559,7 @@ export default function CreateRoutineScreen() {
             </View>
 
             {/* Skill Level Selector */}
-            <ThemedText style={styles.sectionHeader}>Skill Level</ThemedText>
+            <ThemedText style={[styles.sectionHeader, { color: textColorMuted }]}>Skill Level</ThemedText>
             <View style={styles.skillSection}>
                 <View style={styles.typeButtonsContainer}>
                     {Object.values(SkillLevel).map((level) => (
@@ -587,7 +587,7 @@ export default function CreateRoutineScreen() {
 
             {/* Exercises Section Header */}
             <View style={styles.exercisesSection}>
-                <ThemedText style={styles.sectionHeader}>Exercises</ThemedText>
+                <ThemedText style={[styles.sectionHeader, { color: textColorMuted }]}>Exercises</ThemedText>
             </View>
         </View>
     );
@@ -714,7 +714,7 @@ export default function CreateRoutineScreen() {
                         backgroundColor: 'transparent',
                     }
                 ]}
-                pointerEvents="box-none"
+                    pointerEvents="box-none"
                 >
                     <LinearGradient
                         colors={[backgroundColor, 'transparent']}
@@ -804,7 +804,6 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '500',
         marginBottom: 12,
-        color: '#888',
     },
     addExerciseButton: {
         flexDirection: 'row',

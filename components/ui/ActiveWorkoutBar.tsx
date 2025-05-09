@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Animated, Pressable } from 'react-native';
+import { View, StyleSheet, Animated, Pressable, Alert } from 'react-native';
 import { ThemedText } from '../ThemedText';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { SPACING } from '@/constants/Spacing';
@@ -48,6 +48,25 @@ export function ActiveWorkoutBar({
     setIsDrawerVisible(false);
   };
 
+  // Handle stop button press with confirmation
+  const handleStopPress = () => {
+    Alert.alert(
+      "End Workout",
+      "Are you sure you want to end this workout?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel"
+        },
+        {
+          text: "End Workout",
+          onPress: onStop,
+          style: "destructive"
+        }
+      ]
+    );
+  };
+
   // Calculate bottom position to be precisely above the tab bar
   const bottomPosition = bottom + SPACING.navHeight + 10;
 
@@ -82,7 +101,7 @@ export function ActiveWorkoutBar({
         {/* Controls */}
         <View style={styles.controls}>
           <PlatformPressable 
-            onPress={onStop}
+            onPress={handleStopPress}
             style={styles.actionButton}
             hitSlop={8}
           >
@@ -117,6 +136,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: SPACING.pageHorizontal,
     right: SPACING.pageHorizontal,
+    marginBottom: 10,
     // height: 56,
     flexDirection: 'row',
     alignItems: 'center',
@@ -126,9 +146,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     zIndex: 999,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 8,
     elevation: 10,
   },
   workoutIcon: {
