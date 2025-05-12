@@ -221,7 +221,7 @@ export function WorkoutDrawer({
     );
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { pointerEvents: 'box-none' }]}>
             <TouchableWithoutFeedback onPress={closeDrawerWithGesture}>
                 <Animated.View
                     style={[
@@ -231,6 +231,7 @@ export function WorkoutDrawer({
                                 inputRange: [0, 1],
                                 outputRange: [0, 0.7],
                             }),
+                            pointerEvents: isVisible ? 'auto' : 'none',
                         },
                     ]}
                 />
@@ -327,11 +328,11 @@ export function WorkoutDrawer({
                                             }}
                                         >
                                             <View style={styles.routineInfo}>
-                                                <ThemedText style={styles.routineName} numberOfLines={1} ellipsizeMode="tail">
+                                                <ThemedText key={`${routine.id}-name`} style={styles.routineName} numberOfLines={1} ellipsizeMode="tail">
                                                     {routine.name}
                                                 </ThemedText>
                                                 <View style={styles.routineMetaRow}>
-                                                    <ThemedText style={[styles.metaText, { color: textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
+                                                    <ThemedText key={`${routine.id}-meta`} style={[styles.metaText, { color: textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
                                                         {routine.type} • {routine.duration}
                                                     </ThemedText>
                                                 </View>
@@ -359,10 +360,13 @@ const styles = StyleSheet.create({
     container: {
         ...StyleSheet.absoluteFillObject,
         zIndex: 1000,
+        elevation: 999,
+        backgroundColor: 'transparent',
     },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: '#000',
+        zIndex: 900,
     },
     drawer: {
         position: 'absolute',
@@ -375,7 +379,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: -3 },
         shadowOpacity: 0.1,
         shadowRadius: 10,
-        elevation: 20,
+        elevation: 25,
+        zIndex: 1001,
     },
     handleContainer: {
         alignItems: 'center',

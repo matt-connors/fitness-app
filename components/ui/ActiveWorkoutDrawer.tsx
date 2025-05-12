@@ -420,6 +420,7 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         }));
     };
 
+    // Only render if visible or in the process of animating out
     if (!isVisible && !isAnimatingOut) {
         return null;
     }
@@ -521,7 +522,17 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         if (!visible) return null;
 
         return (
-            <GestureHandlerRootView style={{ position: 'absolute', width: '100%', height: '100%', zIndex: 1200 }}>
+            <GestureHandlerRootView style={{ 
+                position: 'absolute', 
+                width: '100%', 
+                height: '100%', 
+                zIndex: 1500, 
+                top: 0, 
+                left: 0, 
+                right: 0, 
+                bottom: 0,
+                pointerEvents: 'box-none'
+            }}>
                 <View style={styles.modalOverlay}>
                     <View style={[styles.modalContent, { backgroundColor }]}>
                         <View style={styles.modalHeader}>
@@ -606,8 +617,16 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
     );
 
     return (
-        <GestureHandlerRootView style={{ flex: 1 }}>
-            <ThemedView style={styles.container}>
+        <GestureHandlerRootView 
+            style={{ 
+                position: 'absolute', 
+                width: '100%', 
+                height: '100%', 
+                zIndex: 9999, 
+                pointerEvents: isVisible || isAnimatingOut ? 'box-none' : 'none' 
+            }}
+        >
+            <ThemedView style={[styles.container, { pointerEvents: 'box-none', opacity: isVisible || isAnimatingOut ? 1 : 0 }]}>
                 <TouchableWithoutFeedback onPress={closeDrawerWithGesture}>
                     <Animated.View
                         style={[
@@ -617,6 +636,7 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                                     inputRange: [0, 1],
                                     outputRange: [0, 0.7],
                                 }),
+                                pointerEvents: isVisible ? 'auto' : 'none',
                             },
                         ]}
                     />
@@ -698,7 +718,9 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
 
                                 {/* Exercise List */}
                                 {exercises.map((exercise, index) => (
-                                    renderExerciseItem(exercise, index)
+                                    <View key={exercise.id}>
+                                        {renderExerciseItem(exercise, index)}
+                                    </View>
                                 ))}
 
                                 {/* List Footer with Add Exercise button */}
@@ -707,29 +729,29 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                         </View>
                     </View>
                 </Animated.View>
-
-                {/* Exercise Selection Modal */}
-                {showExerciseDropdown && (
-                    <ExerciseSelectModal
-                        visible={!!showExerciseDropdown}
-                        exerciseId={showExerciseDropdown}
-                    />
-                )}
-
-                {/* RPE Info Tooltip */}
-                <RpeTooltip
-                    visible={showRpeTooltip !== null}
-                    onClose={() => setShowRpeTooltip(null)}
-                    type="rpe"
-                />
-
-                {/* RIR Info Tooltip */}
-                <RpeTooltip
-                    visible={showRirTooltip !== null}
-                    onClose={() => setShowRirTooltip(null)}
-                    type="rir"
-                />
             </ThemedView>
+
+            {/* Exercise Selection Modal */}
+            {showExerciseDropdown && (
+                <ExerciseSelectModal
+                    visible={!!showExerciseDropdown}
+                    exerciseId={showExerciseDropdown}
+                />
+            )}
+
+            {/* RPE Info Tooltip */}
+            <RpeTooltip
+                visible={showRpeTooltip !== null}
+                onClose={() => setShowRpeTooltip(null)}
+                type="rpe"
+            />
+
+            {/* RIR Info Tooltip */}
+            <RpeTooltip
+                visible={showRirTooltip !== null}
+                onClose={() => setShowRirTooltip(null)}
+                type="rir"
+            />
         </GestureHandlerRootView>
     );
 }
@@ -737,11 +759,14 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
 const styles = StyleSheet.create({
     container: {
         ...StyleSheet.absoluteFillObject,
-        zIndex: 1000,
+        zIndex: 9999,
+        elevation: 999,
+        backgroundColor: 'transparent',
     },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: '#000',
+        zIndex: 1000,
     },
     drawer: {
         position: 'absolute',
@@ -754,7 +779,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: -3 },
         shadowOpacity: 0.1,
         shadowRadius: 10,
-        elevation: 20,
+        elevation: 25,
+        zIndex: 1001,
     },
     drawerContent: {
         flex: 1,
@@ -820,7 +846,8 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0, 0, 0, 0.7)',
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 1200,
+        zIndex: 1500,
+        pointerEvents: 'auto',
     },
     modalContent: {
         width: '90%',
@@ -831,7 +858,8 @@ const styles = StyleSheet.create({
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
-        elevation: 5,
+        elevation: 30,
+        zIndex: 1501,
     },
     modalHeader: {
         flexDirection: 'row',

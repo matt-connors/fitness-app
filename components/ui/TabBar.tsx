@@ -238,32 +238,29 @@ export function TabBar({ state, descriptors, navigation, insets }: TabBarProps) 
                 styles.tabBar,
                 { paddingBottom: insets.bottom }
             ]}>
-                {state.routes.map((route, index) => {
-                    // Skip rendering items for 'active-workout' route
-                    if (route.name === 'active-workout') {
-                        return null;
-                    }
+                {state.routes
+                    .filter(route => route.name !== 'active-workout')
+                    .map((route, index) => {
+                        const { options } = descriptors[route.key];
+                        const label = options.tabBarLabel ?? options.title ?? route.name;
+                        const isFocused = state.index === index;
 
-                    const { options } = descriptors[route.key];
-                    const label = options.tabBarLabel ?? options.title ?? route.name;
-                    const isFocused = state.index === index;
-
-                    return (
-                        <TabItem
-                            key={route.key}
-                            route={route}
-                            isFocused={isFocused}
-                            focusedColor={focusedColor}
-                            unfocusedColor={unfocusedColor}
-                            onPress={() => handlePress(route, isFocused)}
-                            onLongPress={() => handleLongPress(route)}
-                            href={buildHref(route.name, route.params) || ''}
-                            label={label as string}
-                            accessibilityLabel={options.tabBarAccessibilityLabel}
-                            testID={options.tabBarButtonTestID}
-                        />
-                    );
-                })}
+                        return (
+                            <TabItem
+                                key={route.key}
+                                route={route}
+                                isFocused={isFocused}
+                                focusedColor={focusedColor}
+                                unfocusedColor={unfocusedColor}
+                                onPress={() => handlePress(route, isFocused)}
+                                onLongPress={() => handleLongPress(route)}
+                                href={buildHref(route.name, route.params) || ''}
+                                label={label as string}
+                                accessibilityLabel={options.tabBarAccessibilityLabel}
+                                testID={options.tabBarButtonTestID}
+                            />
+                        );
+                    })}
             </View>
 
             {showStartWorkoutButton && (
@@ -344,6 +341,7 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         zIndex: 10,
+        elevation: 8,
     },
     tabBar: {
         flexDirection: 'row',

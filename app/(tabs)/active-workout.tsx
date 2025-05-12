@@ -146,7 +146,7 @@ export default function ActiveWorkoutScreen() {
   };
   
   return (
-    <PageContainer>
+    <PageContainer style={{ backgroundColor: useThemeColor('background') }}>
       <View style={styles.headerSection}>
         <ThemedText style={styles.title}>Current Workout</ThemedText>
         <PlatformPressable 
