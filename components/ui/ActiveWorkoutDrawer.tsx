@@ -18,12 +18,13 @@ import { ThemedSection } from '../ThemedSection';
 import { PlatformPressable } from '@react-navigation/elements';
 import { useActiveWorkout } from '@/components/ActiveWorkoutProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, Plus, ChevronDown, Trash2, X, MoreVertical } from 'lucide-react-native';
+import { Search, Plus, ChevronDown, Trash2, X, MoreVertical, Check } from 'lucide-react-native';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { SPACING } from '@/constants/Spacing';
 import ExerciseSets from '@/components/exercise/ExerciseSets';
 import RpeTooltip from '@/components/exercise/RpeTooltip';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { LinearGradient } from 'expo-linear-gradient';
 
 interface ActiveWorkoutDrawerProps {
     isVisible: boolean;
@@ -60,28 +61,7 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
             reps: string;
             completed: boolean;
         }>;
-    }>>([
-        {
-            id: '1',
-            name: 'Bench Press',
-            showRpe: false,
-            sets: [
-                { id: '1-1', weight: '135', reps: '10', completed: false },
-                { id: '1-2', weight: '155', reps: '8', completed: false },
-                { id: '1-3', weight: '185', reps: '6', completed: false },
-            ]
-        },
-        {
-            id: '2',
-            name: 'Squats',
-            showRpe: false,
-            sets: [
-                { id: '2-1', weight: '185', reps: '10', completed: false },
-                { id: '2-2', weight: '225', reps: '8', completed: false },
-                { id: '2-3', weight: '245', reps: '6', completed: false },
-            ]
-        }
-    ]);
+    }>>([]);
 
     // Exercise dropdown management
     const [showExerciseDropdown, setShowExerciseDropdown] = useState<string | null>(null);
@@ -92,6 +72,7 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
     const [isAnimatingOut, setIsAnimatingOut] = useState(false);
     const drawerAnim = useRef(new Animated.Value(0)).current;
     const drawerTranslateY = useRef(new Animated.Value(0)).current;
+    const buttonTranslateY = useRef(new Animated.Value(300)).current;
 
     // Scroll position tracking
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -109,6 +90,7 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
     const subtleBackground = useThemeColor('backgroundSubtleContrast');
     const contrastBackground = useThemeColor('backgroundContrast');
     const backgroundColor = useThemeColor('background');
+    const textColorMuted = useThemeColor('textMuted');
 
     const screenHeight = Dimensions.get('window').height;
     const DRAWER_HEIGHT = screenHeight;
@@ -195,6 +177,14 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                 easing: Easing.out(Easing.cubic),
                 useNativeDriver: true,
             }).start();
+
+            // Animate the button separately
+            Animated.timing(buttonTranslateY, {
+                toValue: 0,
+                duration: 350,
+                easing: Easing.out(Easing.cubic),
+                useNativeDriver: true,
+            }).start();
         } else {
             setIsAnimatingOut(true);
 
@@ -210,6 +200,14 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                     drawerTranslateY.setValue(0);
                 }
             });
+
+            // Hide the button
+            Animated.timing(buttonTranslateY, {
+                toValue: 300,
+                duration: 200,
+                easing: Easing.in(Easing.cubic),
+                useNativeDriver: true,
+            }).start();
         }
     }, [isVisible]);
 
@@ -522,14 +520,14 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         if (!visible) return null;
 
         return (
-            <GestureHandlerRootView style={{ 
-                position: 'absolute', 
-                width: '100%', 
-                height: '100%', 
-                zIndex: 1500, 
-                top: 0, 
-                left: 0, 
-                right: 0, 
+            <GestureHandlerRootView style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                zIndex: 1500,
+                top: 0,
+                left: 0,
+                right: 0,
                 bottom: 0,
                 pointerEvents: 'box-none'
             }}>
@@ -617,13 +615,13 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
     );
 
     return (
-        <GestureHandlerRootView 
-            style={{ 
-                position: 'absolute', 
-                width: '100%', 
-                height: '100%', 
-                zIndex: 9999, 
-                pointerEvents: isVisible || isAnimatingOut ? 'box-none' : 'none' 
+        <GestureHandlerRootView
+            style={{
+                position: 'absolute',
+                width: '100%',
+                height: '100%',
+                zIndex: 9999,
+                pointerEvents: isVisible || isAnimatingOut ? 'box-none' : 'none'
             }}
         >
             <ThemedView style={[styles.container, { pointerEvents: 'box-none', opacity: isVisible || isAnimatingOut ? 1 : 0 }]}>
@@ -670,28 +668,25 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                                 <ChevronDown size={24} color={textColor} strokeWidth={1.7} />
                             </PlatformPressable>
 
-                            <TouchableOpacity
-                                onPress={handleEndWorkout}
-                                style={styles.endButton}
-                            >
-                                <ThemedText style={{ fontSize: 14, color: textColor }}>End Workout</ThemedText>
-                            </TouchableOpacity>
+                            <ThemedText style={[styles.timerText, { color: textSecondary }]}>
+                                {elapsedTime}
+                            </ThemedText>
                         </View>
 
                         {/* Workout Name and Timer */}
                         <View style={styles.workoutNameContainer}>
-                            <TextInput
-                                style={[styles.workoutNameInput, { color: textColor }]}
-                                value={workoutName}
-                                onChangeText={handleWorkoutNameChange}
-                                placeholder="Workout Name"
-                                placeholderTextColor={textColor + '80'}
-                            />
-                            <PlatformPressable onPress={togglePause}>
-                                <ThemedText style={[styles.timerText, { color: textSecondary }]}>
-                                    {elapsedTime}
-                                </ThemedText>
-                            </PlatformPressable>
+                            <ThemedSection style={styles.nameSection}>
+                                <TextInput
+                                    style={[
+                                        styles.routineNameInput,
+                                        { color: textColor },
+                                    ]}
+                                    placeholderTextColor={textColorMuted}
+                                    value={workoutName}
+                                    onChangeText={handleWorkoutNameChange}
+                                    placeholder="Workout Name"
+                                />
+                            </ThemedSection>
                         </View>
 
                         {/* Main Content Area */}
@@ -729,15 +724,44 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                         </View>
                     </View>
                 </Animated.View>
+
+                {/* End Workout Button at bottom */}
+                <Animated.View style={[
+                    styles.bottomButtonContainer,
+                    {
+                        paddingBottom: insets.bottom + 15,
+                        paddingHorizontal: SPACING.pageHorizontal,
+                        transform: [{ translateY: buttonTranslateY }],
+                    }
+                ]}
+                >
+                    <LinearGradient
+                        colors={[backgroundColor, 'transparent']}
+                        style={styles.gradientBackground}
+                        start={{ x: 0.5, y: 1 }}
+                        end={{ x: 0.5, y: 0 }}
+                    />
+                    <PlatformPressable
+                        onPress={handleEndWorkout}
+                        style={[styles.endWorkoutButton, { backgroundColor: accentColor }]}
+                    >
+                        <Check size={24} color={accentTextColor} />
+                        <ThemedText style={[styles.endWorkoutButtonText, { color: accentTextColor }]}>
+                            End Workout
+                        </ThemedText>
+                    </PlatformPressable>
+                </Animated.View>
             </ThemedView>
 
             {/* Exercise Selection Modal */}
-            {showExerciseDropdown && (
-                <ExerciseSelectModal
-                    visible={!!showExerciseDropdown}
-                    exerciseId={showExerciseDropdown}
-                />
-            )}
+            {
+                showExerciseDropdown && (
+                    <ExerciseSelectModal
+                        visible={!!showExerciseDropdown}
+                        exerciseId={showExerciseDropdown}
+                    />
+                )
+            }
 
             {/* RPE Info Tooltip */}
             <RpeTooltip
@@ -752,7 +776,7 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                 onClose={() => setShowRirTooltip(null)}
                 type="rir"
             />
-        </GestureHandlerRootView>
+        </GestureHandlerRootView >
     );
 }
 
@@ -767,6 +791,15 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
         backgroundColor: '#000',
         zIndex: 1000,
+    },
+    nameSection: {
+        marginTop: 24,
+        // marginBottom: SPACING.pageVertical,
+    },
+    routineNameInput: {
+        fontSize: 16,
+        fontWeight: '400',
+        height: 42,
     },
     drawer: {
         position: 'absolute',
@@ -795,22 +828,9 @@ const styles = StyleSheet.create({
     closeButton: {
         padding: 4,
     },
-    endButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderWidth: 1,
-        borderColor: 'rgba(150, 150, 150, 0.3)',
-        borderRadius: 16,
-    },
     workoutNameContainer: {
         paddingHorizontal: SPACING.pageHorizontal,
         marginBottom: 22,
-    },
-    workoutNameInput: {
-        fontSize: 28,
-        fontWeight: '500',
-        marginTop: 8,
-        marginBottom: 8,
     },
     timerText: {
         fontSize: 16,
@@ -908,4 +928,39 @@ const styles = StyleSheet.create({
     noResultsText: {
         fontSize: 16,
     },
+    bottomButtonContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        backdropFilter: 'blur(8px)',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 5,
+        zIndex: 2000,
+    },
+    gradientBackground: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        top: -100,
+        bottom: 0,
+        zIndex: -1,
+    },
+    endWorkoutButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderRadius: 12,
+        width: '100%',
+    },
+    endWorkoutButtonText: {
+        fontWeight: '500',
+        fontSize: 16,
+        marginLeft: 8,
+    }
 }); 

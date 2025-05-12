@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingVertical: 16,
         paddingHorizontal: 16,
-        // borderBottomWidth: StyleSheet.hairlineWidth,
+        // borderBottomWidth: StyleSheet.hairlineW  idth,
     },
     settingLabel: {
         fontSize: 16,
