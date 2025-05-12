@@ -48,7 +48,44 @@ export default function CreateRoutineScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const insets = useSafeAreaInsets();
-  const routineData = params.workout ? JSON.parse(decodeURIComponent(String(params.workout))) as RoutineData : null;
+  
+  // Safer parameter handling to prevent "Cannot assign to read-only property" error
+  const getRoutineData = () => {
+    try {
+      if (!params.workout) {
+        console.log('No workout data provided');
+        return null;
+      }
+      
+      console.log('Workout param type:', typeof params.workout, 
+                 'isArray:', Array.isArray(params.workout));
+      
+      // Check if it's already an object but not an array
+      if (typeof params.workout === 'object' && !Array.isArray(params.workout)) {
+        console.log('Processing workout as object');
+        // Make a safe copy to avoid modifying read-only properties
+        const workoutObj = { ...params.workout as Record<string, any> };
+        return {
+          id: String(workoutObj.id || ''),
+          name: String(workoutObj.name || ''),
+          type: workoutObj.type,
+          date: workoutObj.date,
+          duration: workoutObj.duration
+        } as RoutineData;
+      }
+      
+      // Otherwise treat it as a string that needs to be parsed
+      console.log('Processing workout as string');
+      const decodedStr = decodeURIComponent(String(params.workout));
+      console.log('Decoded string length:', decodedStr.length);
+      return JSON.parse(decodedStr) as RoutineData;
+    } catch (error) {
+      console.error('Error parsing workout data:', error);
+      return null;
+    }
+  };
+  
+  const routineData = getRoutineData();
   
   const [routineName, setRoutineName] = useState('');
   const [exercises, setExercises] = useState<Exercise[]>([]);
