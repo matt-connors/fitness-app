@@ -2,22 +2,40 @@ import { StyleSheet, View, Switch, Alert, TouchableOpacity } from 'react-native'
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { StandardHeader } from '@/components/ui/StandardHeader';
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { SPACING } from '@/constants/Spacing';
 import { PageContainer } from '@/components/PageContainer';
 import { useAuth } from '../../lib/context/AuthContext';
+import { useTheme } from '../../lib/context/ThemeContext';
+import { useColorScheme as useSystemColorScheme } from 'react-native';
 
 export default function SettingsScreen() {
     const accentColor = useThemeColor('brand');
+    const brandTextColor = useThemeColor('brandText');
     const borderColor = useThemeColor('border');
     const cardBgColor = useThemeColor('backgroundSubtleContrast');
-    const dangerColor = '#ff3b30'; // iOS red color for destructive actions
+    const contrastColor = useThemeColor('backgroundContrast');
+    const dangerColor = '#ff3b30';
     
-    // Example settings state
-    const [darkMode, setDarkMode] = useState(false);
-    const [notifications, setNotifications] = useState(true);
-    const [metricUnits, setMetricUnits] = useState(true);
+    // Get theme context
+    const { themeMode, setThemeMode, isDarkMode } = useTheme();
+    
+    // Get system color scheme for displaying the "Default" text
+    const systemColorScheme = useSystemColorScheme();
+    
+    // Handle dark mode toggle
+    const handleDarkModeToggle = () => {
+        // If currently system or light, set to dark
+        // If currently dark, set to light
+        const newMode = isDarkMode ? 'light' : 'dark';
+        setThemeMode(newMode);
+    };
+    
+    // Handle system default toggle
+    const handleUseSystemDefault = () => {
+        setThemeMode('system');
+    };
 
     const { signOut, user } = useAuth();
 
@@ -50,37 +68,28 @@ export default function SettingsScreen() {
             <StandardHeader title="Settings" />
             
             <PageContainer hasHeader={true}>
-                {/* App settings */}
+                {/* Theme settings */}
                 <View style={[styles.settingsGroup, { backgroundColor: cardBgColor }]}>
                     <View style={[styles.settingItem, { borderBottomColor: borderColor }]}>
                         <ThemedText style={styles.settingLabel}>Dark Mode</ThemedText>
                         <Switch 
-                            value={darkMode}
-                            onValueChange={setDarkMode}
-                            thumbColor={darkMode ? accentColor : '#f4f3f4'}
-                            trackColor={{ false: '#767577', true: `${accentColor}80` }}
+                            value={isDarkMode}
+                            onValueChange={handleDarkModeToggle}
+                            thumbColor={isDarkMode ? brandTextColor : '#f4f3f4'}
+                            trackColor={{ false: contrastColor, true: accentColor }}
                         />
                     </View>
                     
-                    <View style={[styles.settingItem, { borderBottomColor: borderColor }]}>
-                        <ThemedText style={styles.settingLabel}>Notifications</ThemedText>
-                        <Switch 
-                            value={notifications}
-                            onValueChange={setNotifications}
-                            thumbColor={notifications ? accentColor : '#f4f3f4'}
-                            trackColor={{ false: '#767577', true: `${accentColor}80` }}
-                        />
-                    </View>
-                    
-                    <View style={styles.settingItem}>
-                        <ThemedText style={styles.settingLabel}>Use Metric Units</ThemedText>
-                        <Switch 
-                            value={metricUnits}
-                            onValueChange={setMetricUnits}
-                            thumbColor={metricUnits ? accentColor : '#f4f3f4'}
-                            trackColor={{ false: '#767577', true: `${accentColor}80` }}
-                        />
-                    </View>
+                    <TouchableOpacity 
+                        style={styles.settingItem}
+                        onPress={handleUseSystemDefault}
+                    >
+                        <ThemedText style={styles.settingLabel}>Use System Default</ThemedText>
+                        <ThemedText style={[styles.settingValue, themeMode !== 'system' && styles.inactive]}>
+                            {themeMode === 'system' ? 'On' : 'Off'} 
+                            {themeMode === 'system' && ` (${systemColorScheme === 'dark' ? 'Dark' : 'Light'})`}
+                        </ThemedText>
+                    </TouchableOpacity>
                 </View>
                 
                 {/* Account section */}
@@ -113,7 +122,7 @@ const styles = StyleSheet.create({
     settingsGroup: {
         borderRadius: 12,
         overflow: 'hidden',
-        marginBottom: 24,
+        marginTop: 24,
     },
     settingItem: {
         flexDirection: 'row',
@@ -125,15 +134,19 @@ const styles = StyleSheet.create({
     },
     settingLabel: {
         fontSize: 16,
-        fontWeight: '500',
+        fontWeight: '400',
     },
     settingValue: {
         fontSize: 16,
         opacity: 0.6,
     },
+    inactive: {
+        opacity: 0.4,
+    },
     appVersion: {
         textAlign: 'center',
         opacity: 0.5,
         fontSize: 14,
+        marginTop: 24,
     }
 });

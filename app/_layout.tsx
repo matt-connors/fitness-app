@@ -1,10 +1,10 @@
+import React, { useEffect, ReactNode, FC } from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack, ErrorBoundary } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, ReactNode, FC } from 'react';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -13,6 +13,7 @@ import { Colors } from '@/constants/Colors';
 import { ActiveWorkoutProvider } from '@/components/ActiveWorkoutProvider';
 import { GraphQLProvider } from '@/lib/graphql/client';
 import { AuthProvider } from '@/lib/context/AuthContext';
+import { ThemeProvider } from '@/lib/context/ThemeContext';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useRouter, usePathname } from 'expo-router';
 
@@ -97,32 +98,34 @@ function RootLayoutNav() {
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-            <AuthProvider>
-                <GraphQLProvider>
-                    <ThemeProvider value={theme}>
-                        <ActiveWorkoutProvider>
-                            <AuthGuard>
-                                <Stack>
-                                    {/* 
-                                        Note: The (tabs) route has its own ActiveWorkoutProvider
-                                        This allows standalone screens to still access context
-                                    */}
-                                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                                    <Stack.Screen name="create-workout" options={{ headerShown: false }} />
-                                    <Stack.Screen name="create-routine" options={{ headerShown: false }} />
-                                    <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                                    
-                                    {/* Auth screens */}
-                                    <Stack.Screen name="login" options={{ headerShown: false }} />
-                                    <Stack.Screen name="signup" options={{ headerShown: true, title: 'Create Account' }} />
-                                    <Stack.Screen name="forgot-password" options={{ headerShown: true, title: 'Reset Password' }} />
-                                </Stack>
-                                <StatusBar style="auto" />
-                            </AuthGuard>
-                        </ActiveWorkoutProvider>
-                    </ThemeProvider>
-                </GraphQLProvider>
-            </AuthProvider>
+            <ThemeProvider>
+                <AuthProvider>
+                    <GraphQLProvider>
+                        <NavigationThemeProvider value={theme}>
+                            <ActiveWorkoutProvider>
+                                <AuthGuard>
+                                    <Stack>
+                                        {/* 
+                                            Note: The (tabs) route has its own ActiveWorkoutProvider
+                                            This allows standalone screens to still access context
+                                        */}
+                                        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                                        <Stack.Screen name="create-workout" options={{ headerShown: false }} />
+                                        <Stack.Screen name="create-routine" options={{ headerShown: false }} />
+                                        <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                                        
+                                        {/* Auth screens */}
+                                        <Stack.Screen name="login" options={{ headerShown: false }} />
+                                        <Stack.Screen name="signup" options={{ headerShown: true, title: 'Create Account' }} />
+                                        <Stack.Screen name="forgot-password" options={{ headerShown: true, title: 'Reset Password' }} />
+                                    </Stack>
+                                    <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+                                </AuthGuard>
+                            </ActiveWorkoutProvider>
+                        </NavigationThemeProvider>
+                    </GraphQLProvider>
+                </AuthProvider>
+            </ThemeProvider>
         </GestureHandlerRootView>
     );
 }
