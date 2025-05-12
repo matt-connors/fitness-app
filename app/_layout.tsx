@@ -4,7 +4,7 @@ import { useFonts } from 'expo-font';
 import { Stack, ErrorBoundary } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, ReactNode, FC } from 'react';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -12,6 +12,9 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { Colors } from '@/constants/Colors';
 import { ActiveWorkoutProvider } from '@/components/ActiveWorkoutProvider';
 import { GraphQLProvider } from '@/lib/graphql/client';
+import { AuthProvider } from '@/lib/context/AuthContext';
+import { useAuth } from '@/lib/context/AuthContext';
+import { useRouter, usePathname } from 'expo-router';
 
 export { ErrorBoundary };
 
@@ -22,6 +25,36 @@ export const unstable_settings = {
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+// Auth guard component to protect routes
+const AuthGuard: FC<{ children: ReactNode }> = ({ children }) => {
+    const { user, loading } = useAuth();
+    const pathname = usePathname();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (loading) return;
+
+        // Check if the current route is in the auth group
+        const authRoutes = ['/login', '/signup', '/forgot-password'];
+        const isAuthRoute = authRoutes.includes(pathname);
+
+        if (!user && !isAuthRoute) {
+            // Redirect to login if user is not authenticated and not in auth route
+            router.replace('/login');
+        } else if (user && isAuthRoute) {
+            // Redirect to home if user is authenticated but in auth route
+            router.replace('/');
+        }
+    }, [user, loading, pathname, router]);
+
+    if (loading) {
+        // You could return a loading screen here
+        return null;
+    }
+
+    return <>{children}</>;
+};
 
 export default function RootLayout() {
     const [loaded, error] = useFonts({
@@ -64,23 +97,32 @@ function RootLayoutNav() {
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
-            <GraphQLProvider>
-                <ThemeProvider value={theme}>
-                    <ActiveWorkoutProvider>
-                        <Stack>
-                            {/* 
-                                Note: The (tabs) route has its own ActiveWorkoutProvider
-                                This allows standalone screens to still access context
-                            */}
-                            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                            <Stack.Screen name="create-workout" options={{ headerShown: false }} />
-                            <Stack.Screen name="create-routine" options={{ headerShown: false }} />
-                            <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
-                        </Stack>
-                        <StatusBar style="auto" />
-                    </ActiveWorkoutProvider>
-                </ThemeProvider>
-            </GraphQLProvider>
+            <AuthProvider>
+                <GraphQLProvider>
+                    <ThemeProvider value={theme}>
+                        <ActiveWorkoutProvider>
+                            <AuthGuard>
+                                <Stack>
+                                    {/* 
+                                        Note: The (tabs) route has its own ActiveWorkoutProvider
+                                        This allows standalone screens to still access context
+                                    */}
+                                    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                                    <Stack.Screen name="create-workout" options={{ headerShown: false }} />
+                                    <Stack.Screen name="create-routine" options={{ headerShown: false }} />
+                                    <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+                                    
+                                    {/* Auth screens */}
+                                    <Stack.Screen name="login" options={{ headerShown: false }} />
+                                    <Stack.Screen name="signup" options={{ headerShown: true, title: 'Create Account' }} />
+                                    <Stack.Screen name="forgot-password" options={{ headerShown: true, title: 'Reset Password' }} />
+                                </Stack>
+                                <StatusBar style="auto" />
+                            </AuthGuard>
+                        </ActiveWorkoutProvider>
+                    </ThemeProvider>
+                </GraphQLProvider>
+            </AuthProvider>
         </GestureHandlerRootView>
     );
 }
