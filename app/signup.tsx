@@ -87,7 +87,7 @@ export default function SignupScreen() {
 
         <View style={styles.inputContainer}>
           <TextInput
-            style={[styles.input, { borderColor, backgroundColor: inputBgColor }]}
+            style={[styles.input, { borderColor, backgroundColor: inputBgColor, color: textColor }]}
             placeholder="Full Name"
             placeholderTextColor={textSecondaryColor}
             value={name}
@@ -96,7 +96,7 @@ export default function SignupScreen() {
           />
 
           <TextInput
-            style={[styles.input, { borderColor, backgroundColor: inputBgColor }]}
+            style={[styles.input, { borderColor, backgroundColor: inputBgColor, color: textColor }]}
             placeholder="Email"
             placeholderTextColor={textSecondaryColor}
             value={email}
@@ -108,7 +108,7 @@ export default function SignupScreen() {
 
           <View style={[styles.passwordContainer, { borderColor, backgroundColor: inputBgColor }]}>
             <TextInput
-              style={styles.passwordInput}
+              style={[styles.passwordInput, { color: textColor }]}
               placeholder="Password"
               placeholderTextColor={textSecondaryColor}
               value={password}
@@ -125,7 +125,7 @@ export default function SignupScreen() {
           </View>
 
           <TextInput
-            style={[styles.input, { borderColor, backgroundColor: inputBgColor }]}
+            style={[styles.input, { borderColor, backgroundColor: inputBgColor, color: textColor }]}
             placeholder="Confirm Password"
             placeholderTextColor={textSecondaryColor}
             value={confirmPassword}

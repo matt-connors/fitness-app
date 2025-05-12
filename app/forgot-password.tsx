@@ -100,7 +100,7 @@ export default function ForgotPasswordScreen() {
         </ThemedText>
 
         <TextInput
-          style={[styles.input, { borderColor, backgroundColor: inputBgColor }]}
+          style={[styles.input, { borderColor, backgroundColor: inputBgColor, color: textColor }]}
           placeholder="Email"
           placeholderTextColor={textSecondaryColor}
           value={email}

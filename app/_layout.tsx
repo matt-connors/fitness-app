@@ -13,7 +13,7 @@ import { Colors } from '@/constants/Colors';
 import { ActiveWorkoutProvider } from '@/components/ActiveWorkoutProvider';
 import { GraphQLProvider } from '@/lib/graphql/client';
 import { AuthProvider } from '@/lib/context/AuthContext';
-import { ThemeProvider } from '@/lib/context/ThemeContext';
+import { ThemeProvider, useTheme } from '@/lib/context/ThemeContext';
 import { useAuth } from '@/lib/context/AuthContext';
 import { useRouter, usePathname } from 'expo-router';
 
@@ -57,6 +57,35 @@ const AuthGuard: FC<{ children: ReactNode }> = ({ children }) => {
     return <>{children}</>;
 };
 
+// StatusBar component that uses the theme context
+function ThemedStatusBar() {
+    const { isDarkMode } = useTheme();
+    return <StatusBar style={isDarkMode ? 'light' : 'dark'} />;
+}
+
+// Navigation theme component that uses the theme context
+function ThemedNavigation({ children }: { children: React.ReactNode }) {
+    const { isDarkMode } = useTheme();
+    
+    // Use the DefaultTheme/DarkTheme from React Navigation
+    const baseTheme = isDarkMode ? DarkTheme : DefaultTheme;
+    
+    // Merge our custom colors with the base theme
+    const theme = {
+        ...baseTheme,
+        colors: {
+            ...baseTheme.colors,
+            ...(isDarkMode ? Colors.dark : Colors.light),
+        },
+    };
+
+    return (
+        <NavigationThemeProvider value={theme}>
+            {children}
+        </NavigationThemeProvider>
+    );
+}
+
 export default function RootLayout() {
     const [loaded, error] = useFonts({
         SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
@@ -82,26 +111,12 @@ export default function RootLayout() {
 }
 
 function RootLayoutNav() {
-    const colorScheme = useColorScheme();
-
-    // Use the DefaultTheme/DarkTheme from React Navigation which includes the fonts property
-    const baseTheme = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
-    
-    // Merge our custom colors with the base theme
-    const theme = {
-        ...baseTheme,
-        colors: {
-            ...baseTheme.colors,
-            ...(colorScheme === 'dark' ? Colors.dark : Colors.light),
-        },
-    };
-
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <ThemeProvider>
                 <AuthProvider>
                     <GraphQLProvider>
-                        <NavigationThemeProvider value={theme}>
+                        <ThemedNavigation>
                             <ActiveWorkoutProvider>
                                 <AuthGuard>
                                     <Stack>
@@ -119,10 +134,10 @@ function RootLayoutNav() {
                                         <Stack.Screen name="signup" options={{ headerShown: true, title: 'Create Account' }} />
                                         <Stack.Screen name="forgot-password" options={{ headerShown: true, title: 'Reset Password' }} />
                                     </Stack>
-                                    <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+                                    <ThemedStatusBar />
                                 </AuthGuard>
                             </ActiveWorkoutProvider>
-                        </NavigationThemeProvider>
+                        </ThemedNavigation>
                     </GraphQLProvider>
                 </AuthProvider>
             </ThemeProvider>

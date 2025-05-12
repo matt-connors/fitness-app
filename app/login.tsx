@@ -68,7 +68,7 @@ export default function LoginScreen() {
 
       <View style={styles.inputContainer}>
         <TextInput
-          style={[styles.input, { borderColor, backgroundColor: inputBgColor }]}
+          style={[styles.input, { borderColor, backgroundColor: inputBgColor, color: textColor }]}
           placeholder="Email"
           placeholderTextColor={textSecondaryColor}
           value={email}
@@ -80,7 +80,7 @@ export default function LoginScreen() {
 
         <View style={[styles.passwordContainer, { borderColor, backgroundColor: inputBgColor }]}>
           <TextInput
-            style={styles.passwordInput}
+            style={[styles.passwordInput, { color: textColor }]}
             placeholder="Password"
             placeholderTextColor={textSecondaryColor}
             value={password}
