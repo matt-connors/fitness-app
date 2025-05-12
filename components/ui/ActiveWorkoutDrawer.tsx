@@ -548,7 +548,6 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                                 placeholderTextColor={textMuted}
                                 value={searchQuery}
                                 onChangeText={setSearchQuery}
-                                autoFocus
                             />
                             {searchQuery.length > 0 && (
                                 <TouchableOpacity onPress={() => setSearchQuery('')}>
