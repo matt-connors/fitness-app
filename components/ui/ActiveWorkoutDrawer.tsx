@@ -515,85 +515,6 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         );
     };
 
-    // Exercise Select Modal component
-    const ExerciseSelectModal = ({ visible, exerciseId }: { visible: boolean, exerciseId: string }) => {
-        if (!visible) return null;
-
-        return (
-            <GestureHandlerRootView style={{
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                zIndex: 1500,
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                pointerEvents: 'box-none'
-            }}>
-                <View style={styles.modalOverlay}>
-                    <View style={[styles.modalContent, { backgroundColor }]}>
-                        <View style={styles.modalHeader}>
-                            <ThemedText style={styles.modalTitle}>Select Exercise</ThemedText>
-                            <TouchableOpacity onPress={() => setShowExerciseDropdown(null)}>
-                                <X size={24} color={textColor} strokeWidth={1.7} />
-                            </TouchableOpacity>
-                        </View>
-
-                        <View style={[styles.searchContainer, { borderColor }]}>
-                            <Search size={20} color={textMuted} strokeWidth={1.7} />
-                            <TextInput
-                                style={[styles.searchInput, { color: textColor }]}
-                                placeholder="Search exercises..."
-                                placeholderTextColor={textMuted}
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                            />
-                            {searchQuery.length > 0 && (
-                                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                    <X size={20} color={textMuted} strokeWidth={1.7} />
-                                </TouchableOpacity>
-                            )}
-                        </View>
-
-                        <ScrollView style={styles.exerciseList}>
-                            {filteredExercises.map((exercise, index) => (
-                                <TouchableOpacity
-                                    key={exercise.id}
-                                    style={[
-                                        styles.exerciseListItem,
-                                        {
-                                            borderTopWidth: index > 0 ? StyleSheet.hairlineWidth : 0,
-                                            borderTopColor: borderStrongerColor
-                                        }
-                                    ]}
-                                    onPress={() => selectExercise(exerciseId, exercise)}
-                                >
-                                    <View style={{ flex: 1 }}>
-                                        <ThemedText style={styles.exerciseListItemName}>
-                                            {exercise.name}
-                                        </ThemedText>
-                                        <ThemedText style={[styles.exerciseListItemDetails, { color: textSecondary }]}>
-                                            {exercise.muscle} • {exercise.equipment}
-                                        </ThemedText>
-                                    </View>
-                                </TouchableOpacity>
-                            ))}
-
-                            {filteredExercises.length === 0 && (
-                                <View style={styles.noResultsContainer}>
-                                    <ThemedText style={[styles.noResultsText, { color: textMuted }]}>
-                                        No exercises found
-                                    </ThemedText>
-                                </View>
-                            )}
-                        </ScrollView>
-                    </View>
-                </View>
-            </GestureHandlerRootView>
-        );
-    };
-
     // List Footer Component (Add Exercise Button)
     const ListFooter = () => (
         <View>
@@ -614,168 +535,237 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
     );
 
     return (
-        <GestureHandlerRootView
-            style={{
-                position: 'absolute',
-                width: '100%',
-                height: '100%',
-                zIndex: 9999,
-                pointerEvents: isVisible || isAnimatingOut ? 'box-none' : 'none'
-            }}
-        >
-            <ThemedView style={[styles.container, { pointerEvents: 'box-none', opacity: isVisible || isAnimatingOut ? 1 : 0 }]}>
-                <TouchableWithoutFeedback onPress={closeDrawerWithGesture}>
+        <>
+            {/* Main Drawer Component */}
+            <GestureHandlerRootView
+                style={{
+                    position: 'absolute',
+                    width: '100%',
+                    height: '100%',
+                    zIndex: 9999,
+                    pointerEvents: isVisible || isAnimatingOut ? 'box-none' : 'none'
+                }}
+            >
+                <ThemedView style={[styles.container, { pointerEvents: 'box-none', opacity: isVisible || isAnimatingOut ? 1 : 0 }]}>
+                    <TouchableWithoutFeedback onPress={closeDrawerWithGesture}>
+                        <Animated.View
+                            style={[
+                                styles.backdrop,
+                                {
+                                    opacity: drawerAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: [0, 0.7],
+                                    }),
+                                    pointerEvents: isVisible ? 'auto' : 'none',
+                                },
+                            ]}
+                        />
+                    </TouchableWithoutFeedback>
+
                     <Animated.View
                         style={[
-                            styles.backdrop,
+                            styles.drawer,
                             {
-                                opacity: drawerAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [0, 0.7],
-                                }),
-                                pointerEvents: isVisible ? 'auto' : 'none',
+                                backgroundColor,
+                                transform: [
+                                    {
+                                        translateY: combinedTransform
+                                    },
+                                ],
+                                paddingBottom: insets.bottom,
+                                height: DRAWER_HEIGHT,
                             },
                         ]}
-                    />
-                </TouchableWithoutFeedback>
-
-                <Animated.View
-                    style={[
-                        styles.drawer,
-                        {
-                            backgroundColor,
-                            transform: [
-                                {
-                                    translateY: combinedTransform
-                                },
-                            ],
-                            paddingBottom: insets.bottom,
-                            height: DRAWER_HEIGHT,
-                        },
-                    ]}
-                >
-                    <View style={styles.drawerContent}>
-                        {/* Header */}
-                        <View
-                            style={[
-                                styles.headerSection,
-                                { paddingTop: insets.top + 5 || 20 } // Ensure proper safe area spacing
-                            ]}
-                            {...panResponder.panHandlers}
-                        >
-                            <PlatformPressable onPress={closeDrawerWithGesture} style={styles.closeButton}>
-                                <ChevronDown size={24} color={textColor} strokeWidth={1.7} />
-                            </PlatformPressable>
-
-                            <ThemedText style={[styles.timerText, { color: textSecondary }]}>
-                                {elapsedTime}
-                            </ThemedText>
-                        </View>
-
-                        {/* Workout Name and Timer */}
-                        <View style={styles.workoutNameContainer}>
-                            <ThemedSection style={styles.nameSection}>
-                                <TextInput
-                                    style={[
-                                        styles.routineNameInput,
-                                        { color: textColor },
-                                    ]}
-                                    placeholderTextColor={textColorMuted}
-                                    value={workoutName}
-                                    onChangeText={handleWorkoutNameChange}
-                                    placeholder="Workout Name"
-                                />
-                            </ThemedSection>
-                        </View>
-
-                        {/* Main Content Area */}
-                        <View style={[
-                            styles.content,
-                            {
-                                paddingHorizontal: SPACING.pageHorizontal,
-                            }
-                        ]}>
-                            {/* Exercises */}
-                            <Animated.ScrollView
-                                ref={scrollViewRef}
-                                style={{ flex: 1 }}
-                                contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
-                                showsVerticalScrollIndicator={false}
-                                onScroll={handleScroll}
-                                scrollEventThrottle={16}
-                                scrollEnabled={!isDragging} // Disable scrolling when dragging from the top
+                    >
+                        <View style={styles.drawerContent}>
+                            {/* Header */}
+                            <View
+                                style={[
+                                    styles.headerSection,
+                                    { paddingTop: insets.top + 5 || 20 } // Ensure proper safe area spacing
+                                ]}
+                                {...panResponder.panHandlers}
                             >
-                                {/* Exercises Section Header */}
-                                <View style={styles.exercisesSection}>
-                                    <ThemedText style={[styles.sectionHeader, { color: textMuted }]}>Exercises</ThemedText>
-                                </View>
+                                <PlatformPressable onPress={closeDrawerWithGesture} style={styles.closeButton}>
+                                    <ChevronDown size={24} color={textColor} strokeWidth={1.7} />
+                                </PlatformPressable>
 
-                                {/* Exercise List */}
-                                {exercises.map((exercise, index) => (
-                                    <View key={exercise.id}>
-                                        {renderExerciseItem(exercise, index)}
+                                <ThemedText style={[styles.timerText, { color: textSecondary }]}>
+                                    {elapsedTime}
+                                </ThemedText>
+                            </View>
+
+                            {/* Workout Name and Timer */}
+                            <View style={styles.workoutNameContainer}>
+                                <ThemedSection style={styles.nameSection}>
+                                    <TextInput
+                                        style={[
+                                            styles.routineNameInput,
+                                            { color: textColor },
+                                        ]}
+                                        placeholderTextColor={textColorMuted}
+                                        value={workoutName}
+                                        onChangeText={handleWorkoutNameChange}
+                                        placeholder="Workout Name"
+                                    />
+                                </ThemedSection>
+                            </View>
+
+                            {/* Main Content Area */}
+                            <View style={[
+                                styles.content,
+                                {
+                                    paddingHorizontal: SPACING.pageHorizontal,
+                                }
+                            ]}>
+                                {/* Exercises */}
+                                <Animated.ScrollView
+                                    ref={scrollViewRef}
+                                    style={{ flex: 1 }}
+                                    contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
+                                    showsVerticalScrollIndicator={false}
+                                    onScroll={handleScroll}
+                                    scrollEventThrottle={16}
+                                    scrollEnabled={!isDragging} // Disable scrolling when dragging from the top
+                                >
+                                    {/* Exercises Section Header */}
+                                    <View style={styles.exercisesSection}>
+                                        <ThemedText style={[styles.sectionHeader, { color: textMuted }]}>Exercises</ThemedText>
                                     </View>
+
+                                    {/* Exercise List */}
+                                    {exercises.map((exercise, index) => (
+                                        <View key={exercise.id}>
+                                            {renderExerciseItem(exercise, index)}
+                                        </View>
+                                    ))}
+
+                                    {/* List Footer with Add Exercise button */}
+                                    <ListFooter />
+                                </Animated.ScrollView>
+                            </View>
+                        </View>
+                    </Animated.View>
+
+                    {/* End Workout Button at bottom */}
+                    <Animated.View style={[
+                        styles.bottomButtonContainer,
+                        {
+                            paddingBottom: insets.bottom + 15,
+                            paddingHorizontal: SPACING.pageHorizontal,
+                            transform: [{ translateY: buttonTranslateY }],
+                        }
+                    ]}
+                    >
+                        <LinearGradient
+                            colors={[backgroundColor, 'transparent']}
+                            style={styles.gradientBackground}
+                            start={{ x: 0.5, y: 1 }}
+                            end={{ x: 0.5, y: 0 }}
+                        />
+                        <PlatformPressable
+                            onPress={handleEndWorkout}
+                            style={[styles.endWorkoutButton, { backgroundColor: accentColor }]}
+                        >
+                            <Check size={24} color={accentTextColor} />
+                            <ThemedText style={[styles.endWorkoutButtonText, { color: accentTextColor }]}>
+                                End Workout
+                            </ThemedText>
+                        </PlatformPressable>
+                    </Animated.View>
+                </ThemedView>
+
+                {/* RPE Info Tooltip */}
+                <RpeTooltip
+                    visible={showRpeTooltip !== null}
+                    onClose={() => setShowRpeTooltip(null)}
+                    type="rpe"
+                />
+
+                {/* RIR Info Tooltip */}
+                <RpeTooltip
+                    visible={showRirTooltip !== null}
+                    onClose={() => setShowRirTooltip(null)}
+                    type="rir"
+                />
+            </GestureHandlerRootView>
+
+            {/* Exercise Selection Modal - Moved outside the GestureHandlerRootView */}
+            {showExerciseDropdown && (
+                <GestureHandlerRootView
+                    style={{
+                        position: 'absolute',
+                        width: '100%',
+                        height: '100%',
+                        zIndex: 10000,
+                        elevation: 1000,
+                        top: 0,
+                        left: 0,
+                        pointerEvents: 'box-none'
+                    }}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={[styles.modalContent, { backgroundColor }]}>
+                            <View style={styles.modalHeader}>
+                                <ThemedText style={styles.modalTitle}>Select Exercise</ThemedText>
+                                <TouchableOpacity onPress={() => setShowExerciseDropdown(null)}>
+                                    <X size={24} color={textColor} strokeWidth={1.7} />
+                                </TouchableOpacity>
+                            </View>
+
+                            <View style={[styles.searchContainer, { borderColor }]}>
+                                <Search size={20} color={textMuted} strokeWidth={1.7} />
+                                <TextInput
+                                    style={[styles.searchInput, { color: textColor }]}
+                                    placeholder="Search exercises..."
+                                    placeholderTextColor={textMuted}
+                                    value={searchQuery}
+                                    onChangeText={setSearchQuery}
+                                />
+                                {searchQuery.length > 0 && (
+                                    <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                        <X size={20} color={textMuted} strokeWidth={1.7} />
+                                    </TouchableOpacity>
+                                )}
+                            </View>
+
+                            <ScrollView style={styles.exerciseList}>
+                                {filteredExercises.map((exercise, index) => (
+                                    <TouchableOpacity
+                                        key={exercise.id}
+                                        style={[
+                                            styles.exerciseListItem,
+                                            {
+                                                borderTopWidth: index > 0 ? StyleSheet.hairlineWidth : 0,
+                                                borderTopColor: borderStrongerColor
+                                            }
+                                        ]}
+                                        onPress={() => selectExercise(showExerciseDropdown, exercise)}
+                                    >
+                                        <View style={{ flex: 1 }}>
+                                            <ThemedText style={styles.exerciseListItemName}>
+                                                {exercise.name}
+                                            </ThemedText>
+                                            <ThemedText style={[styles.exerciseListItemDetails, { color: textSecondary }]}>
+                                                {exercise.muscle} • {exercise.equipment}
+                                            </ThemedText>
+                                        </View>
+                                    </TouchableOpacity>
                                 ))}
 
-                                {/* List Footer with Add Exercise button */}
-                                <ListFooter />
-                            </Animated.ScrollView>
+                                {filteredExercises.length === 0 && (
+                                    <View style={styles.noResultsContainer}>
+                                        <ThemedText style={[styles.noResultsText, { color: textMuted }]}>
+                                            No exercises found
+                                        </ThemedText>
+                                    </View>
+                                )}
+                            </ScrollView>
                         </View>
                     </View>
-                </Animated.View>
-
-                {/* End Workout Button at bottom */}
-                <Animated.View style={[
-                    styles.bottomButtonContainer,
-                    {
-                        paddingBottom: insets.bottom + 15,
-                        paddingHorizontal: SPACING.pageHorizontal,
-                        transform: [{ translateY: buttonTranslateY }],
-                    }
-                ]}
-                >
-                    <LinearGradient
-                        colors={[backgroundColor, 'transparent']}
-                        style={styles.gradientBackground}
-                        start={{ x: 0.5, y: 1 }}
-                        end={{ x: 0.5, y: 0 }}
-                    />
-                    <PlatformPressable
-                        onPress={handleEndWorkout}
-                        style={[styles.endWorkoutButton, { backgroundColor: accentColor }]}
-                    >
-                        <Check size={24} color={accentTextColor} />
-                        <ThemedText style={[styles.endWorkoutButtonText, { color: accentTextColor }]}>
-                            End Workout
-                        </ThemedText>
-                    </PlatformPressable>
-                </Animated.View>
-            </ThemedView>
-
-            {/* Exercise Selection Modal */}
-            {
-                showExerciseDropdown && (
-                    <ExerciseSelectModal
-                        visible={!!showExerciseDropdown}
-                        exerciseId={showExerciseDropdown}
-                    />
-                )
-            }
-
-            {/* RPE Info Tooltip */}
-            <RpeTooltip
-                visible={showRpeTooltip !== null}
-                onClose={() => setShowRpeTooltip(null)}
-                type="rpe"
-            />
-
-            {/* RIR Info Tooltip */}
-            <RpeTooltip
-                visible={showRirTooltip !== null}
-                onClose={() => setShowRirTooltip(null)}
-                type="rir"
-            />
-        </GestureHandlerRootView >
+                </GestureHandlerRootView>
+            )}
+        </>
     );
 }
 
