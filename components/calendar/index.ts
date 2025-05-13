@@ -1,5 +1,4 @@
-export { Calendar } from './Calendar';
+export { Calendar, type CalendarRef, type CalendarProps } from './Calendar';
 export { CalendarHeader } from './CalendarHeader';
 export { CalendarDay } from './CalendarDay';
-export { MonthView } from './MonthView';
-export type { CalendarProps, CalendarRef } from './Calendar'; 
+export { MonthView } from './MonthView'; 

@@ -138,4 +138,20 @@ export const GET_SESSION_SETS = gql`
       weight
     }
   }
+`;
+
+export const GET_USER_SESSIONS = gql`
+  query GetUserSessions($fromDate: String, $toDate: String) {
+    sessions(fromDate: $fromDate, toDate: $toDate) {
+      id
+      name
+      date
+      duration
+      routine {
+        id
+        name
+        type
+      }
+    }
+  }
 `; 

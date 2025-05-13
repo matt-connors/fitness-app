@@ -41,46 +41,6 @@ export const MONTH_PADDING = 40; // Padding for month header and spacing
 export const MONTH_SPACING = 40; // Vertical spacing between months
 export const BASE_MONTH_HEIGHT = (CELL_HEIGHT * 6) + MONTH_PADDING + MONTH_SPACING; // Maximum possible height
 
-// Mock workout data for development
-export const MOCK_WORKOUTS: WorkoutEvent[] = [
-  { 
-    id: '1', 
-    label: 'Chest / Back', 
-    color: '#442A0A',
-    date: new Date(new Date().getFullYear(), new Date().getMonth(), 2)
-  },
-  { 
-    id: '2', 
-    label: 'Legs', 
-    color: '#072B3E',
-    date: new Date(new Date().getFullYear(), new Date().getMonth(), 5) 
-  },
-  { 
-    id: '3', 
-    label: 'Shoulders', 
-    color: '#292E34',
-    date: new Date(new Date().getFullYear(), new Date().getMonth(), 8)
-  },
-  { 
-    id: '4', 
-    label: 'Cardio', 
-    color: '#3E1707',
-    date: new Date(new Date().getFullYear(), new Date().getMonth(), 10)
-  },
-  { 
-    id: '5', 
-    label: 'Arms', 
-    color: '#073E1E',
-    date: new Date(new Date().getFullYear(), new Date().getMonth(), 12)
-  },
-  { 
-    id: '6', 
-    label: 'Full Body', 
-    color: '#1C073E',
-    date: new Date(new Date().getFullYear(), new Date().getMonth(), 15)
-  }
-];
-
 // Helper functions
 export function createDate(year: number, month: number, day: number = 1): Date {
   const date = new Date(year, month, day);
@@ -129,20 +89,37 @@ export function getCalendarDays(year: number, month: number, workouts: WorkoutEv
     const fullDate = createDate(year, month, i);
     const isToday = fullDate.getTime() === today.getTime();
     
-    // Find workout for this day
-    const workout = workouts.find(w => {
-      const workoutDate = new Date(w.date);
-      return workoutDate.getDate() === i && 
-             workoutDate.getMonth() === month && 
-             workoutDate.getFullYear() === year;
-    });
+    // Find workout for this day - improved comparison logic
+    let foundWorkout: WorkoutEvent | undefined;
+    
+    for (const workout of workouts) {
+      const workoutDate = new Date(workout.date);
+      
+      // Normalize dates for comparison (remove time component)
+      const normalizedWorkoutDate = new Date(
+        workoutDate.getFullYear(),
+        workoutDate.getMonth(),
+        workoutDate.getDate()
+      );
+      
+      const normalizedFullDate = new Date(
+        fullDate.getFullYear(),
+        fullDate.getMonth(),
+        fullDate.getDate()
+      );
+      
+      if (normalizedWorkoutDate.getTime() === normalizedFullDate.getTime()) {
+        foundWorkout = workout;
+        break;
+      }
+    }
 
     days.push({
       date: i,
       fullDate,
       isCurrentMonth: true,
       isToday,
-      workout
+      workout: foundWorkout
     });
   }
 

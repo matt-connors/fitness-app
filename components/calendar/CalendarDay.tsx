@@ -33,7 +33,12 @@ export function CalendarDay({ day, onPress }: CalendarDayProps) {
       {day.isCurrentMonth && (
         <View style={styles.cellContent}>
           {day.workout && (
-            <View style={[styles.workoutBadge, { backgroundColor: day.workout.color }]}>
+            <View 
+              style={[
+                styles.workoutBadge, 
+                { backgroundColor: day.workout.color }
+              ]}
+            >
               <ThemedText 
                 numberOfLines={1} 
                 ellipsizeMode="clip" 
@@ -89,8 +94,11 @@ const styles = StyleSheet.create({
   },
   workoutBadgeText: {
     fontSize: 10,
-    fontWeight: '500',
-    lineHeight: 0,
+    fontWeight: '600',
     color: '#ffffff',
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 1.5,
   },
 }); 
