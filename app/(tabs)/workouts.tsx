@@ -45,6 +45,7 @@ export default function WorkoutsScreen() {
     const calendarRef = useRef<CalendarRef>(null);
     const appState = useRef(AppState.currentState);
     const accentColor = useThemeColor('brand');
+    const accentColorText = useThemeColor('brandText');
     const insets = useSafeAreaInsets();
 
     // Fetch sessions data using Apollo Client
@@ -161,7 +162,7 @@ export default function WorkoutsScreen() {
             style={[styles.todayButton, { backgroundColor: accentColor }]} 
             onPress={handleScrollToToday}
         >
-            <ThemedText style={styles.todayButtonText}>Today</ThemedText>
+            <ThemedText style={[styles.todayButtonText, { color: accentColorText }]}>Today</ThemedText>
         </PlatformPressable>
     );
 
@@ -206,13 +207,13 @@ const styles = StyleSheet.create({
         // paddingHorizontal: SPACING.pageHorizontal,
     },
     todayButton: {
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 16,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
     },
     todayButtonText: {
         color: '#fff',
-        fontWeight: '600',
+        fontWeight: '400',
         fontSize: 14,
     },
     calendarHeader: {

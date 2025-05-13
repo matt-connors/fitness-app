@@ -83,14 +83,13 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   workoutBadge: {
-    width: '100%',
+    position: 'absolute',
+    width: '90%',
     paddingVertical: 3,
     paddingHorizontal: 4,
     borderRadius: 4,
-    position: 'absolute',
     top: 10,
-    left: '50%',
-    transform: [{ translateX: -50 }],
+    alignSelf: 'center',
   },
   workoutBadgeText: {
     fontSize: 10,
