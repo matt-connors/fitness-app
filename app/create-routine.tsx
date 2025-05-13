@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, TextInput, ScrollView, TouchableOpacity, GestureResponderEvent, PanResponder, Alert } from 'react-native';
+import { View, StyleSheet, TextInput, ScrollView, TouchableOpacity, GestureResponderEvent, PanResponder, Alert, LogBox } from 'react-native';
 import { ThemedView } from '@/components/ThemedView';
 import { ThemedText } from '@/components/ThemedText';
 import { PlatformPressable } from '@react-navigation/elements';
@@ -31,6 +31,8 @@ import {
     mapExerciseToRoutineExerciseInput
 } from '@/lib/graphql/types';
 
+// Temporarily ignore all console logs for debugging
+LogBox.ignoreAllLogs();
 
 export default function CreateRoutineScreen() {
     const router = useRouter();
@@ -363,51 +365,119 @@ export default function CreateRoutineScreen() {
 
         try {
             // Map exercises to the format expected by the GraphQL API
-            const exerciseInputs = exercises.map((exercise, index) =>
-                mapExerciseToRoutineExerciseInput(exercise, index)
-            );
+            const exerciseInputs = exercises.map((exercise, index) => {
+                // Check if the exercise has a name selected
+                if (!exercise.name) {
+                    throw new Error(`Exercise #${index + 1} needs a name. Please select an exercise.`);
+                }
+                return mapExerciseToRoutineExerciseInput(exercise, index);
+            });
 
-            // Prepare the input for the mutation
+            // Log what we're sending for debugging
+            console.log('Exercise inputs for API:', JSON.stringify(exerciseInputs, null, 2));
+
+            // Prepare common input for both create and update operations
             const routineInput = {
                 name: routineName,
-                type: routineType, // This is a string value from the enum
-                skillLevel: routineSkillLevel, // This is a string value from the enum
+                type: routineType,
+                skillLevel: routineSkillLevel,
                 exercises: exerciseInputs
             };
 
+            // Log the full input
+            console.log(`${isEditMode ? 'Updating' : 'Creating'} routine with:`, JSON.stringify(routineInput, null, 2));
+
             // Execute the appropriate mutation based on whether we're editing or creating
             if (isEditMode && workoutId) {
-                const { data, errors } = await updateRoutine({
-                    variables: {
-                        id: parseInt(workoutId, 10),
-                        input: routineInput
-                    }
-                });
+                try {
+                    const result = await updateRoutine({
+                        variables: {
+                            id: parseInt(workoutId, 10),
+                            input: routineInput
+                        }
+                    });
 
-                if (errors) {
-                    console.error('Error updating routine:', errors);
-                    Alert.alert('Error', 'Failed to update routine');
+                    if (result.errors) {
+                        console.error('GraphQL errors updating routine:', result.errors);
+                        Alert.alert('Error', `Failed to update routine: ${result.errors[0]?.message || 'Unknown error'}`);
+                        return;
+                    }
+
+                    console.log('Update successful:', result.data);
+                } catch (error: any) {
+                    // Log detailed error information
+                    console.error('Error updating routine:', error);
+                    
+                    // Try to extract more useful information from the error
+                    const errorMessage = error.toString();
+                    const networkError = error.networkError 
+                        ? `Network error: ${JSON.stringify(error.networkError)}` 
+                        : '';
+                    const graphQLErrors = error.graphQLErrors 
+                        ? `GraphQL errors: ${JSON.stringify(error.graphQLErrors)}` 
+                        : '';
+                    
+                    console.error(`Detailed error: ${errorMessage}\n${networkError}\n${graphQLErrors}`);
+                    
+                    Alert.alert(
+                        'Error', 
+                        `Failed to update routine. ${
+                            error.graphQLErrors?.[0]?.message || 
+                            error.networkError?.result?.errors?.[0]?.message || 
+                            error.message || 
+                            'Unknown error'
+                        }`
+                    );
                     return;
                 }
             } else {
-                const { data, errors } = await createRoutine({
-                    variables: {
-                        input: routineInput
-                    }
-                });
+                try {
+                    const result = await createRoutine({
+                        variables: {
+                            input: routineInput
+                        }
+                    });
 
-                if (errors) {
-                    console.error('Error creating routine:', errors);
-                    Alert.alert('Error', 'Failed to create routine');
+                    if (result.errors) {
+                        console.error('GraphQL errors creating routine:', result.errors);
+                        Alert.alert('Error', `Failed to create routine: ${result.errors[0]?.message || 'Unknown error'}`);
+                        return;
+                    }
+
+                    console.log('Create successful:', result.data);
+                } catch (error: any) {
+                    // Log detailed error information
+                    console.error('Error creating routine:', error);
+                    
+                    // Try to extract more useful information from the error
+                    const errorMessage = error.toString();
+                    const networkError = error.networkError 
+                        ? `Network error: ${JSON.stringify(error.networkError)}` 
+                        : '';
+                    const graphQLErrors = error.graphQLErrors 
+                        ? `GraphQL errors: ${JSON.stringify(error.graphQLErrors)}` 
+                        : '';
+                    
+                    console.error(`Detailed error: ${errorMessage}\n${networkError}\n${graphQLErrors}`);
+                    
+                    Alert.alert(
+                        'Error', 
+                        `Failed to create routine. ${
+                            error.graphQLErrors?.[0]?.message || 
+                            error.networkError?.result?.errors?.[0]?.message || 
+                            error.message || 
+                            'Unknown error'
+                        }`
+                    );
                     return;
                 }
             }
 
             // Navigate back on success
             router.back();
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving routine:', error);
-            Alert.alert('Error', 'An unexpected error occurred while saving the routine');
+            Alert.alert('Error', `An unexpected error occurred: ${error.message || 'Unknown error'}`);
         }
     };
 

@@ -121,34 +121,72 @@ export function mapExerciseToRoutineExerciseInput(
   // Convert ID safely - ensure it's a safe integer for GraphQL
   let exerciseId: number;
   try {
-    // Check if the ID is a valid number that fits within GraphQL Int limits
-    // GraphQL Int type represents a signed 32-bit integer (max value: 2147483647)
-    const MAX_INT_32 = 2147483647;
-    
-    if (typeof exercise.id === 'number' && exercise.id < MAX_INT_32) {
+    // Check if the exercise has an exerciseId from a selection dropdown
+    if (exercise.exerciseId && typeof exercise.exerciseId === 'number') {
+      // Use the exerciseId directly when available
+      exerciseId = exercise.exerciseId;
+    } else if (typeof exercise.id === 'number') {
+      // Use numeric id as-is
       exerciseId = exercise.id;
-    } else if (typeof exercise.id === 'string' && !isNaN(Number(exercise.id))) {
-      // If it's a string that can be converted to a number
-      const numId = Number(exercise.id);
-      // Check if the number is within safe bounds for GraphQL Int
-      if (numId < MAX_INT_32) {
-        exerciseId = numId;
+    } else if (typeof exercise.id === 'string') {
+      if (exercise.id.includes('temp-')) {
+        // Handle temporary IDs created during the UI workflow (e.g., "temp-123456")
+        // In this case we need to ensure we have a valid exerciseId from selection
+        if (exercise.name && typeof exercise.name === 'string') {
+          // Try to extract exerciseId from the name if it's a selection
+          // This is a fallback assuming the name might contain the ID
+          const match = exercise.name.match(/^(\d+)\s*[:-]/);
+          if (match) {
+            exerciseId = parseInt(match[1], 10);
+          } else {
+            // If we can't extract a valid ID, use the index plus a small offset
+            exerciseId = (index + 1);
+          }
+        } else {
+          exerciseId = (index + 1);
+        }
+      } else if (!isNaN(Number(exercise.id))) {
+        // If it's a string that can be converted to a number, use that
+        exerciseId = Number(exercise.id);
       } else {
-        // For timestamp-based IDs or other large numbers, use index-based fallback
+        // Fall back to index-based ID
         exerciseId = (index + 1);
       }
     } else {
-      // For auto-generated IDs or invalid formats, use a simple number
-      exerciseId = (index + 1); 
+      // For any other cases, use a simple number
+      exerciseId = (index + 1);
     }
   } catch (error) {
     console.warn('Error converting exercise ID, using fallback:', error);
     exerciseId = (index + 1); // Fallback to a simple index-based ID
   }
 
+  // Make sure exerciseId is a valid number
+  if (isNaN(exerciseId) || !isFinite(exerciseId) || exerciseId <= 0) {
+    exerciseId = (index + 1);
+  }
+
+  // Construct the proper set array
+  let sets = [];
+  if (Array.isArray(exercise.multipleSets) && exercise.multipleSets.length > 0) {
+    sets = exercise.multipleSets;
+  } else if (exercise.sets && exercise.reps) {
+    // Handle the case where we have single set data
+    const reps = typeof exercise.reps === 'string' ? parseInt(exercise.reps, 10) : exercise.reps;
+    sets = [{
+      setNumber: 1,
+      reps: reps || undefined,
+      weight: exercise.weight || undefined,
+      rpe: exercise.rpe || undefined,
+      rir: exercise.rir || undefined,
+      tempo: exercise.tempo || undefined,
+      restPause: exercise.restPause || undefined
+    }];
+  }
+
   return {
     exerciseId,
-    sets: exercise.multipleSets || [],
+    sets,
     restTime: exercise.restPause,
     order: index,
     rir: exercise.rir,
