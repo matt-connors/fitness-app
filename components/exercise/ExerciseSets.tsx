@@ -11,7 +11,7 @@ import * as Haptics from 'expo-haptics';
 interface ExerciseSetsProps {
   exercise: Exercise;
   onUpdateExercise: (id: string, field: string, value: string | number) => void;
-  onUpdateSet: (exerciseId: string, setIndex: number, field: string, value: string | number) => void;
+  onUpdateSet: (exerciseId: string, setIndex: number, field: string, value: string | number | undefined) => void;
   onAddSetToExercise: (id: string) => void;
   setShowRpeTooltip: (id: string | null) => void;
   setShowRirTooltip?: (id: string | null) => void;
@@ -400,7 +400,7 @@ const ExerciseSets: React.FC<ExerciseSetsProps> = ({
                         placeholder="Any"
                         placeholderTextColor={textColorMuted}
                         value={set.reps?.toString() || ''}
-                        onChangeText={(value) => onUpdateSet(exercise.id, index, 'reps', parseInt(value) || 0)}
+                        onChangeText={(value) => onUpdateSet(exercise.id, index, 'reps', value === '' ? undefined : parseInt(value) || 0)}
                       />
                     </View>
 
@@ -428,11 +428,10 @@ const ExerciseSets: React.FC<ExerciseSetsProps> = ({
                           ? set.rpe?.toString() || ''
                           : set.weight?.toString() || ''}
                         onChangeText={(value) => {
-                          const intValue = parseInt(value) || 0;
                           if (exercise.showRpe) {
-                            onUpdateSet(exercise.id, index, 'rpe', intValue);
+                            onUpdateSet(exercise.id, index, 'rpe', value === '' ? undefined : parseInt(value) || 0);
                           } else {
-                            onUpdateSet(exercise.id, index, 'weight', intValue);
+                            onUpdateSet(exercise.id, index, 'weight', value === '' ? undefined : parseInt(value) || 0);
                           }
                         }}
                       />

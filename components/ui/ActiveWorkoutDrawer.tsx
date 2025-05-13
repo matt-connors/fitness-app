@@ -72,8 +72,8 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         sessionExerciseId?: number; // Backend session exercise ID
         sets: Array<{
             id: string;
-            weight: string;
-            reps: string;
+            weight?: string;
+            reps?: string;
             completed: boolean;
             sessionSetId?: number; // Backend session set ID
         }>;
@@ -140,11 +140,11 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                     // Map sets if available
                     const sets = exercise.sets?.map((set: any, setIndex: number) => ({
                         id: `${exerciseId}-${setIndex + 1}`,
-                        weight: set.weight?.toString() || '0',
-                        reps: set.reps?.toString() || '0',
+                        weight: set.weight?.toString(),
+                        reps: set.reps?.toString(),
                         completed: set.completed || false,
                         sessionSetId: set.id
-                    })) || [{ id: `${exerciseId}-1`, weight: '0', reps: '0', completed: false }];
+                    })) || [{ id: `${exerciseId}-1`, weight: undefined, reps: undefined, completed: false }];
                     
                     return {
                         id: exerciseId,
@@ -325,8 +325,8 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                                 updateSessionSet({
                                     variables: {
                                         id: parseInt(updatedSet.sessionSetId.toString(), 10),
-                                        reps: parseInt(updatedSet.reps, 10) || null,
-                                        weight: parseFloat(updatedSet.weight) || null
+                                        reps: updatedSet.reps ? (parseInt(updatedSet.reps, 10) || null) : 0,
+                                        weight: updatedSet.weight ? (parseFloat(updatedSet.weight) || null) : 0
                                     }
                                 }).catch(error => {
                                     console.error('Error updating set:', error);
@@ -343,7 +343,7 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         }));
     };
 
-    const updateSet = async (exerciseId: string, setId: string, field: 'weight' | 'reps', value: string) => {
+    const updateSet = async (exerciseId: string, setId: string, field: 'weight' | 'reps', value: string | undefined) => {
         // First, update local state
         const updatedExercises = exercises.map(exercise => {
             if (exercise.id === exerciseId) {
@@ -372,8 +372,12 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                 await updateSessionSet({
                     variables: {
                         id: parseInt(set.sessionSetId.toString(), 10),
-                        reps: field === 'reps' ? (parseInt(value, 10) || null) : (parseInt(set.reps, 10) || null),
-                        weight: field === 'weight' ? (parseFloat(value) || null) : (parseFloat(set.weight) || null)
+                        reps: field === 'reps' 
+                            ? (value ? parseInt(value, 10) || null : 0)
+                            : (set.reps ? parseInt(set.reps, 10) || null : 0),
+                        weight: field === 'weight' 
+                            ? (value ? parseFloat(value) || null : 0)
+                            : (set.weight ? parseFloat(set.weight) || null : 0)
                     }
                 });
             } catch (error) {
@@ -394,8 +398,8 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         // Create new set in local state first
         const newSet = {
             id: newSetId,
-            weight: lastSet?.weight || '0',
-            reps: lastSet?.reps || '0',
+            weight: lastSet?.weight,
+            reps: lastSet?.reps,
             completed: false
         };
         
@@ -414,8 +418,8 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                     variables: {
                         sessionExerciseId: parseInt(exercise.sessionExerciseId.toString(), 10),
                         setNumber: exercise.sets.length + 1,
-                        reps: parseInt(newSet.reps, 10) || null,
-                        weight: parseFloat(newSet.weight) || null
+                        reps: newSet.reps ? (parseInt(newSet.reps, 10) || null) : 0,
+                        weight: newSet.weight ? (parseFloat(newSet.weight) || null) : 0
                     }
                 });
                 
@@ -485,7 +489,7 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
             name: 'Select an exercise',
             showRpe: false,
             sets: [
-                { id: `${newId}-1`, weight: '0', reps: '0', completed: false }
+                { id: `${newId}-1`, weight: undefined, reps: undefined, completed: false }
             ]
         };
         
@@ -584,8 +588,8 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                                     variables: {
                                         sessionExerciseId: parseInt(sessionExerciseId.toString(), 10),
                                         setNumber: i + 1,
-                                        reps: parseInt(set.reps, 10) || null,
-                                        weight: parseFloat(set.weight) || null
+                                        reps: set.reps ? (parseInt(set.reps, 10) || null) : 0,
+                                        weight: set.weight ? (parseFloat(set.weight) || null) : 0
                                     }
                                 });
                                 
@@ -733,7 +737,7 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                             onUpdateSet={(exerciseId, setIndex, field, value) => {
                                 // Map to our local updateSet function format
                                 if (field === 'reps' || field === 'weight') {
-                                    updateSet(exerciseId, exercise.sets[setIndex].id, field, value.toString());
+                                    updateSet(exerciseId, exercise.sets[setIndex].id, field, value?.toString() || undefined);
                                 } else if (field === 'completed') {
                                     toggleSetCompleted(exerciseId, exercise.sets[setIndex].id);
                                 }
@@ -901,7 +905,6 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                             onPress={handleEndWorkout}
                             style={[styles.endWorkoutButton, { backgroundColor: accentColor }]}
                         >
-                            <Check size={24} color={accentTextColor} />
                             <ThemedText style={[styles.endWorkoutButtonText, { color: accentTextColor }]}>
                                 End Workout
                             </ThemedText>

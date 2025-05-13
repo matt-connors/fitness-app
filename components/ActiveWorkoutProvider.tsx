@@ -1,8 +1,9 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useWorkoutData } from '@/hooks/useWorkoutData';
 import { useRouter } from 'expo-router';
-import { useMutation } from '@apollo/client';
+import { useMutation, useQuery, useApolloClient } from '@apollo/client';
 import { CREATE_SESSION, UPDATE_SESSION } from '@/lib/graphql/mutations';
+import { GET_ROUTINE_DETAILS } from '@/lib/graphql/queries';
 import { Alert } from 'react-native';
 
 interface ActiveWorkoutProviderProps {
@@ -40,10 +41,123 @@ export function ActiveWorkoutProvider({ children }: ActiveWorkoutProviderProps) 
     const [timerInterval, setTimerInterval] = useState<number | null>(null);
     const router = useRouter();
     const { saveWorkout } = useWorkoutData();
+    const apolloClient = useApolloClient();
 
     // GraphQL mutations
     const [createSession, { loading: createSessionLoading }] = useMutation(CREATE_SESSION);
     const [updateSession, { loading: updateSessionLoading }] = useMutation(UPDATE_SESSION);
+
+    // Function to load exercises from a routine
+    const loadExercisesFromRoutine = async (routineId: number, sessionId: number) => {
+        try {
+            console.log(`Loading exercises for routine ${routineId} with session ${sessionId}`);
+            
+            // Use Apollo client properly instead of manual fetch
+            const { data, error, errors } = await apolloClient.query({
+                query: GET_ROUTINE_DETAILS,
+                variables: { id: routineId },
+                fetchPolicy: 'network-only' // Force network request to ensure latest data
+            });
+            
+            if (error || errors) {
+                console.error('GraphQL error:', error || errors);
+                throw new Error(error?.message || errors?.[0]?.message || 'Unknown GraphQL error');
+            }
+            
+            if (!data?.routine) {
+                console.log('No routine data returned from query');
+                return [];
+            }
+            
+            console.log(`Received routine data: ${data.routine.name} with ${data.routine.routineExercises?.length || 0} exercises`);
+            
+            const routine = data.routine;
+            
+            // Process exercises from the routine
+            const processedExercises = Array.isArray(routine.routineExercises) 
+                ? routine.routineExercises
+                    .filter((exercise: any) => exercise && exercise.exercise) // Filter out invalid exercises
+                    .sort((a: any, b: any) => (a.order || 0) - (b.order || 0))
+                    .map((exercise: any, index: number) => {
+                        // Debug log for exercise data
+                        const exerciseName = exercise?.exercise?.name || 'Unknown Exercise';
+                        console.log(`Processing exercise: ${exerciseName}, exerciseId: ${exercise?.exerciseId}`);
+                        
+                        try {
+                            // Safely access sets with proper logging
+                            let exerciseSets = exercise?.sets;
+                            console.log(`Sets type: ${typeof exerciseSets}, Value:`, exerciseSets);
+                            
+                            // Determine number of sets
+                            let numberOfSets = 3; // Default
+                            if (exerciseSets) {
+                                if (Array.isArray(exerciseSets)) {
+                                    numberOfSets = exerciseSets.length;
+                                    console.log(`Using sets array length: ${numberOfSets}`);
+                                } else if (typeof exerciseSets === 'number') {
+                                    numberOfSets = exerciseSets;
+                                    console.log(`Using sets number: ${numberOfSets}`);
+                                }
+                            } else {
+                                console.log(`No sets found, using default: ${numberOfSets}`);
+                            }
+                            
+                            // Create set objects (empty values, just placeholders)
+                            const sets = Array(numberOfSets).fill(0).map((_, setIndex) => ({
+                                id: `${index}-${setIndex + 1}`,
+                                weight: undefined,
+                                reps: undefined,
+                                completed: false
+                            }));
+                            
+                            return {
+                                id: index.toString(),
+                                name: exerciseName,
+                                showRpe: false,
+                                exerciseId: exercise?.exerciseId,
+                                sets
+                            };
+                        } catch (err) {
+                            console.error(`Error processing exercise ${exerciseName}:`, err);
+                            // Return a default exercise with a single set as fallback
+                            return {
+                                id: index.toString(),
+                                name: exerciseName,
+                                showRpe: false,
+                                exerciseId: exercise?.exerciseId,
+                                sets: [{ id: `${index}-1`, weight: undefined, reps: undefined, completed: false }]
+                            };
+                        }
+                    })
+                : [];
+            
+            console.log(`Processed ${processedExercises.length} exercises with sets`);
+            
+            // Update the active workout with the exercises
+            setActiveWorkout(prevWorkout => {
+                if (!prevWorkout) {
+                    console.log('No active workout to update with exercises');
+                    return null;
+                }
+                console.log(`Updating active workout with ${processedExercises.length} exercises`);
+                return {
+                    ...prevWorkout,
+                    exercises: processedExercises
+                };
+            });
+            
+            return processedExercises;
+        } catch (error) {
+            console.error('Error loading exercises from routine:', error);
+            // More detailed error reporting
+            if (error instanceof Error) {
+                console.error('Error name:', error.name);
+                console.error('Error message:', error.message);
+                console.error('Error stack:', error.stack);
+            }
+            return [];
+        }
+    };
 
     // Start the workout timer
     const startTimer = () => {
@@ -178,8 +292,21 @@ export function ActiveWorkoutProvider({ children }: ActiveWorkoutProviderProps) 
                 isPaused: false
             };
             
+            // Set the initial workout state
             setActiveWorkout(newWorkout);
             setElapsedTime('00:00:00');
+            
+            // If there's a routine ID, load the exercises
+            if (routineId) {
+                // We'll load the exercises asynchronously
+                loadExercisesFromRoutine(parseInt(routineId.toString(), 10), data.createSession.id)
+                    .then(exercises => {
+                        console.log(`Loaded ${exercises.length} exercises from routine`);
+                    })
+                    .catch(error => {
+                        console.error('Error in exercise loading process:', error);
+                    });
+            }
         } catch (error) {
             console.error('Error creating session:', error);
             Alert.alert(
@@ -202,6 +329,14 @@ export function ActiveWorkoutProvider({ children }: ActiveWorkoutProviderProps) 
                             
                             setActiveWorkout(newWorkout);
                             setElapsedTime('00:00:00');
+                            
+                            // Try to load exercises for offline workout too
+                            if (routineId) {
+                                loadExercisesFromRoutine(parseInt(routineId.toString(), 10), 0)
+                                    .catch(error => {
+                                        console.error('Error loading exercises for offline workout:', error);
+                                    });
+                            }
                         }
                     }
                 ]

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
     View,
     StyleSheet,
@@ -12,7 +12,8 @@ import {
     useColorScheme,
     PanResponder,
     Easing,
-    Alert
+    Alert,
+    ActivityIndicator
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { ThemedText } from '../ThemedText';
@@ -23,16 +24,9 @@ import { SPACING } from '@/constants/Spacing';
 import { PlatformPressable } from '@react-navigation/elements';
 import { Search, X, Play } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-
-// Mock data for routines
-const LIBRARY_ROUTINES = [
-    { id: '1', name: 'Full Body Strength', type: 'Strength', duration: '45 min' },
-    { id: '2', name: 'Upper/Lower Split', type: 'Strength', duration: '60 min' },
-    { id: '3', name: 'HIIT Cardio', type: 'Cardio', duration: '30 min' },
-    { id: '4', name: 'Push/Pull/Legs', type: 'Strength', duration: '75 min' },
-    { id: '5', name: 'Core Focus', type: 'Core', duration: '20 min' },
-    { id: '6', name: 'Mobility & Flexibility', type: 'Mobility', duration: '40 min' },
-];
+import { useActiveWorkout } from '@/components/ActiveWorkoutProvider';
+import { useQuery } from '@apollo/client';
+import { GET_ROUTINE_DETAILS, GET_USER_ROUTINES } from '@/lib/graphql/queries';
 
 interface WorkoutDrawerProps {
     isVisible: boolean;
@@ -49,13 +43,54 @@ export function WorkoutDrawer({
     onStartEmptyWorkout,
     hasActiveWorkout = false
 }: WorkoutDrawerProps) {
+    // Only return null if never opened - improves performance
+    const hasEverBeenVisible = useRef(false);
+    if (isVisible) {
+        hasEverBeenVisible.current = true;
+    }
+    if (!isVisible && !hasEverBeenVisible.current) {
+        return null;
+    }
+
+    // Main component content
+    return <WorkoutDrawerContent 
+        isVisible={isVisible} 
+        onClose={onClose} 
+        onSelectRoutine={onSelectRoutine} 
+        onStartEmptyWorkout={onStartEmptyWorkout}
+        hasActiveWorkout={hasActiveWorkout}
+    />;
+}
+
+// Separate component to avoid re-rendering the parent
+function WorkoutDrawerContent({
+    isVisible,
+    onClose,
+    onSelectRoutine,
+    onStartEmptyWorkout,
+    hasActiveWorkout = false
+}: WorkoutDrawerProps) {
     const [searchQuery, setSearchQuery] = useState('');
-    const [filteredLibrary, setFilteredLibrary] = useState(LIBRARY_ROUTINES);
     const [isAnimatingOut, setIsAnimatingOut] = useState(false);
     const drawerAnim = useRef(new Animated.Value(0)).current;
     const drawerTranslateY = useRef(new Animated.Value(0)).current;
     const insets = useSafeAreaInsets();
     const router = useRouter();
+    const { startNewWorkout } = useActiveWorkout();
+    
+    // Track when the drawer becomes visible for data loading
+    const [dataFetchTriggered, setDataFetchTriggered] = useState(false);
+
+    // Fetch routines only when drawer is visible
+    const { loading, error, data, refetch } = useQuery(GET_USER_ROUTINES, {
+        variables: {
+            userId: 1, // Current user ID
+            skip: 0,
+            take: 20
+        },
+        skip: !dataFetchTriggered, // Don't run query unless drawer opened
+        fetchPolicy: 'cache-and-network'
+    });
 
     // Theme colors
     const backgroundColor = useThemeColor('background');
@@ -72,6 +107,117 @@ export function WorkoutDrawer({
     const screenHeight = Dimensions.get('window').height;
     const DRAWER_HEIGHT = screenHeight * 0.9;
     const CLOSE_THRESHOLD = 100;
+
+    // Trigger data fetch when drawer becomes visible
+    useEffect(() => {
+        if (isVisible && !dataFetchTriggered) {
+            setDataFetchTriggered(true);
+        }
+    }, [isVisible, dataFetchTriggered]);
+
+    // Retrieve user routines from data safely
+    const userRoutines = useMemo(() => {
+        return data?.userRoutines?.routines || [];
+    }, [data?.userRoutines?.routines]);
+
+    // Memoized filtered routines to prevent unnecessary re-renders
+    const filteredLibrary = useMemo(() => {
+        if (!userRoutines.length) {
+            return [];
+        }
+        
+        if (searchQuery.trim() === '') {
+            return userRoutines;
+        }
+        
+        const query = searchQuery.toLowerCase();
+        return userRoutines.filter((routine: any) =>
+            routine.name.toLowerCase().includes(query) ||
+            routine.type.toLowerCase().includes(query)
+        );
+    }, [userRoutines, searchQuery]);
+
+    // Hook to fetch routine details when one is selected
+    const [selectedRoutineId, setSelectedRoutineId] = useState<number | null>(null);
+    const { loading: routineDetailsLoading, data: routineDetailsData } = useQuery(GET_ROUTINE_DETAILS, {
+        variables: { id: selectedRoutineId },
+        skip: !selectedRoutineId,
+        onCompleted: (data) => {
+            if (data?.routine) {
+                try {
+                    // Process the routine data for ActiveWorkoutDrawer
+                    const processedRoutine = prepareRoutineForWorkout(data.routine);
+                    
+                    // Close drawer first
+                    closeDrawerWithGesture();
+                    
+                    // Start a new workout with the processed routine
+                    // This will create a session in the backend
+                    startNewWorkout(data.routine.name, data.routine.id);
+                    
+                    // Log success
+                    console.log(`Started workout with ${processedRoutine.exercises?.length || 0} exercises`);
+                    
+                    // Reset the selected ID
+                    setSelectedRoutineId(null);
+                } catch (error) {
+                    console.error("Error processing routine data:", error);
+                    Alert.alert("Error", "Something went wrong processing the workout data.");
+                    setSelectedRoutineId(null);
+                }
+            }
+        },
+        onError: (error) => {
+            console.error("Error fetching routine details:", error);
+            Alert.alert(
+                "Error",
+                "Failed to load workout details. Please try again.",
+                [{ text: "OK" }]
+            );
+            setSelectedRoutineId(null);
+        }
+    });
+
+    // Function to prepare routine data for ActiveWorkoutDrawer
+    const prepareRoutineForWorkout = (routine: any) => {
+        if (!routine.routineExercises) return routine;
+        
+        // Map routine exercises to the format expected by ActiveWorkoutDrawer
+        // Only include exercise name and total number of sets per exercise
+        const exercises = routine.routineExercises.map((exercise: any, index: number) => {
+            // Get the set count from the exercise data
+            // If sets is an array, use its length; if it's a number, use that; otherwise default to 3
+            let numberOfSets = 3; // Default
+            if (exercise.sets) {
+                if (Array.isArray(exercise.sets)) {
+                    numberOfSets = exercise.sets.length;
+                } else if (typeof exercise.sets === 'number') {
+                    numberOfSets = exercise.sets;
+                }
+            }
+            
+            // Create simple sets with just id, no weight/reps/rpe data
+            const sets = Array(numberOfSets).fill(0).map((_, setIndex) => ({
+                id: `${index}-${setIndex + 1}`,
+                weight: '0',
+                reps: '0',
+                completed: false
+            }));
+            
+            return {
+                id: index.toString(),
+                name: exercise.exercise.name,
+                showRpe: false,
+                exerciseId: exercise.exercise.id,
+                sets
+            };
+        });
+        
+        return {
+            ...routine,
+            exercises
+        };
+    };
 
     // Check if there's an active workout
     const handleStartEmptyWorkout = () => {
@@ -96,6 +242,32 @@ export function WorkoutDrawer({
         } else {
             closeDrawerWithGesture();
             onStartEmptyWorkout();
+        }
+    };
+
+    // Handle selecting a routine
+    const handleSelectRoutine = (routine: any) => {
+        if (hasActiveWorkout) {
+            Alert.alert(
+                "Active Workout",
+                "You already have an active workout. Would you like to end it and start a new one?",
+                [
+                    {
+                        text: "Cancel",
+                        style: "cancel"
+                    },
+                    {
+                        text: "End & Start New",
+                        onPress: () => {
+                            // Make sure the ID is an integer
+                            setSelectedRoutineId(parseInt(routine.id.toString(), 10));
+                        }
+                    }
+                ]
+            );
+        } else {
+            // Make sure the ID is an integer
+            setSelectedRoutineId(parseInt(routine.id.toString(), 10));
         }
     };
 
@@ -183,21 +355,6 @@ export function WorkoutDrawer({
         // Start the animation first, then call onClose after it finishes
         closeDrawerWithGesture();
     };
-
-    // Filter routines based on search
-    useEffect(() => {
-        if (searchQuery.trim() === '') {
-            setFilteredLibrary(LIBRARY_ROUTINES);
-        } else {
-            const query = searchQuery.toLowerCase();
-            setFilteredLibrary(
-                LIBRARY_ROUTINES.filter(routine =>
-                    routine.name.toLowerCase().includes(query) ||
-                    routine.type.toLowerCase().includes(query)
-                )
-            );
-        }
-    }, [searchQuery]);
 
     // Clear search when drawer closes
     useEffect(() => {
@@ -304,7 +461,24 @@ export function WorkoutDrawer({
                     keyboardShouldPersistTaps="handled"
                 >
                     {/* Library Routines Section */}
-                    {filteredLibrary.length > 0 && (
+                    {loading && !data ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="large" color={accentColor} />
+                            <ThemedText style={styles.loadingText}>Loading routines...</ThemedText>
+                        </View>
+                    ) : error ? (
+                        <View style={styles.errorContainer}>
+                            <ThemedText style={styles.errorText}>
+                                Error loading routines. Please try again.
+                            </ThemedText>
+                            <PlatformPressable
+                                style={[styles.retryButton, { backgroundColor: accentColor }]}
+                                onPress={() => refetch()}
+                            >
+                                <ThemedText style={{ color: accentTextColor }}>Retry</ThemedText>
+                            </PlatformPressable>
+                        </View>
+                    ) : filteredLibrary.length > 0 ? (
                         <View>
                             <View style={styles.sectionHeader}>
                                 <ThemedText style={[styles.sectionTitle, { color: textMuted }]}>Saved Routines</ThemedText>
@@ -312,7 +486,7 @@ export function WorkoutDrawer({
 
                             <View style={{ marginHorizontal: SPACING.pageHorizontalInside }}>
                                 <ThemedSection style={[styles.section, { marginHorizontal: SPACING.pageHorizontalInside }]}>
-                                    {filteredLibrary.map((routine, index) => (
+                                    {filteredLibrary.map((routine: any, index: number) => (
                                         <PlatformPressable
                                             key={routine.id}
                                             style={[
@@ -322,13 +496,8 @@ export function WorkoutDrawer({
                                                     borderTopColor: 'rgba(100, 100, 100, 0.5)',
                                                 }
                                             ]}
-                                            onPress={() => {
-                                                closeDrawerWithGesture();
-                                                onSelectRoutine({
-                                                    ...routine,
-                                                    id: parseInt(routine.id, 10) // Convert string ID to number for the API
-                                                });
-                                            }}
+                                            onPress={() => handleSelectRoutine(routine)}
+                                            disabled={routineDetailsLoading}
                                         >
                                             <View style={styles.routineInfo}>
                                                 <ThemedText key={`${routine.id}-name`} style={styles.routineName} numberOfLines={1} ellipsizeMode="tail">
@@ -336,7 +505,7 @@ export function WorkoutDrawer({
                                                 </ThemedText>
                                                 <View style={styles.routineMetaRow}>
                                                     <ThemedText key={`${routine.id}-meta`} style={[styles.metaText, { color: textSecondary }]} numberOfLines={1} ellipsizeMode="tail">
-                                                        {routine.type} • {routine.duration}
+                                                        {routine.type} • {routine.skillLevel}
                                                     </ThemedText>
                                                 </View>
                                             </View>
@@ -345,12 +514,11 @@ export function WorkoutDrawer({
                                 </ThemedSection>
                             </View>
                         </View>
-                    )}
-
-                    {/* No Results */}
-                    {filteredLibrary.length === 0 && (
+                    ) : (
                         <View style={styles.noResults}>
-                            <ThemedText style={[styles.noResultsText, { color: textMuted }]}>No routines found</ThemedText>
+                            <ThemedText style={[styles.noResultsText, { color: textMuted }]}>
+                                {searchQuery ? "No routines found" : "No saved routines"}
+                            </ThemedText>
                         </View>
                     )}
                 </ScrollView>
@@ -492,5 +660,29 @@ const styles = StyleSheet.create({
     },
     noResultsText: {
         fontSize: 16,
+    },
+    loadingContainer: {
+        padding: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    loadingText: {
+        marginTop: 12,
+        fontSize: 16,
+    },
+    errorContainer: {
+        padding: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    errorText: {
+        marginBottom: 16,
+        fontSize: 16,
+        textAlign: 'center',
+    },
+    retryButton: {
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 8,
     },
 }); 
