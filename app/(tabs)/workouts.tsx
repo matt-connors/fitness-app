@@ -1,11 +1,10 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { StyleSheet, View, AppState, AppStateStatus } from 'react-native';
+import { StyleSheet, View, AppState, AppStateStatus, TouchableOpacity } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { Calendar, CalendarHeader, CalendarRef } from '@/components/calendar';
 import { MONTHS, MonthData, CalendarDay } from '@/app/models/calendar';
 import { SPACING } from '@/constants/Spacing';
-import { PlatformPressable } from '@react-navigation/elements';
 import { useThemeColor } from '@/hooks/useThemeColor';
 import { StandardHeader } from '@/components/ui/StandardHeader';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -41,6 +40,7 @@ export default function WorkoutsScreen() {
     });
 
     const [workouts, setWorkouts] = useState<WorkoutEvent[]>([]);
+    const [isScrollingToToday, setIsScrollingToToday] = useState(false);
 
     const calendarRef = useRef<CalendarRef>(null);
     const appState = useRef(AppState.currentState);
@@ -92,7 +92,7 @@ export default function WorkoutsScreen() {
                 // Check if today's month is different from what we're viewing
                 if (currentYear !== new Date().getFullYear() || currentMonth !== new Date().getMonth()) {
                     // Reset view to today
-                    calendarRef.current?.scrollToToday();
+                    handleScrollToToday();
                 }
                 
                 // Refetch data when app comes to foreground
@@ -151,19 +151,42 @@ export default function WorkoutsScreen() {
         }
     }, [router]);
 
-    // Scroll calendar to today's date
+    // Scroll calendar to today's date with debounce
     const handleScrollToToday = useCallback(() => {
-        calendarRef.current?.scrollToToday();
-    }, []);
+        if (isScrollingToToday) return;
+        
+        setIsScrollingToToday(true);
+        
+        try {
+            if (calendarRef.current) {
+                calendarRef.current.scrollToToday();
+            }
+        } catch (error) {
+            console.error('Error scrolling to today:', error);
+        }
+        
+        // Reset the scrolling flag after a delay
+        setTimeout(() => {
+            setIsScrollingToToday(false);
+        }, 1000);
+    }, [isScrollingToToday]);
 
     // Prepare the Today button for the header
     const todayButton = (
-        <PlatformPressable 
-            style={[styles.todayButton, { backgroundColor: accentColor }]} 
+        <TouchableOpacity
+            style={[
+                styles.todayButton, 
+                { backgroundColor: accentColor },
+                isScrollingToToday && styles.todayButtonDisabled
+            ]} 
             onPress={handleScrollToToday}
+            disabled={isScrollingToToday}
+            activeOpacity={0.7}
         >
-            <ThemedText style={[styles.todayButtonText, { color: accentColorText }]}>Today</ThemedText>
-        </PlatformPressable>
+            <ThemedText style={[styles.todayButtonText, { color: accentColorText }]}>
+                Today
+            </ThemedText>
+        </TouchableOpacity>
     );
 
     // Prepare the calendar header as additional content
@@ -211,8 +234,10 @@ const styles = StyleSheet.create({
         paddingVertical: 6,
         borderRadius: 8,
     },
+    todayButtonDisabled: {
+        opacity: 0.6,
+    },
     todayButtonText: {
-        color: '#fff',
         fontWeight: '400',
         fontSize: 14,
     },

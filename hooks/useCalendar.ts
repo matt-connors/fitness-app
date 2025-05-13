@@ -27,11 +27,12 @@ export function useCalendar({
   const isLoadingRef = useRef(false);
   const currentMonthIndex = useRef(3); // Start with current month in the center
   const initialScrollComplete = useRef(false);
+  const isUpdatingMonths = useRef(false); // New ref to track updates
   const { height: screenHeight } = useWindowDimensions();
   
   // Update months when workouts change
   useEffect(() => {
-    if (workouts.length > 0) {
+    if (workouts.length > 0 && !isUpdatingMonths.current) {
       // Re-generate months when workouts change
       setMonths(getInitialMonths(initialDate, workouts));
     }
@@ -51,28 +52,46 @@ export function useCalendar({
 
   // Scroll to today's date
   const scrollToToday = useCallback(() => {
-    // Reset the loading state to prevent any ongoing loads
-    isLoadingRef.current = false;
+    if (isLoadingRef.current) return; // Prevent multiple calls
     
-    // Reset to a fresh set of months centered on today
-    const newMonths = getInitialMonths(new Date(), workouts);
-    setMonths(newMonths);
-    currentMonthIndex.current = 3; // Reset to center index
+    // Set loading flag to prevent additional calls
+    isLoadingRef.current = true;
+    isUpdatingMonths.current = true; // Prevent workout-based updates
     
-    // Scroll to the new current month
-    requestAnimationFrame(() => {
-      flatListRef.current?.scrollToIndex({
-        index: currentMonthIndex.current,
-        animated: true,
-        viewPosition: 0.5
-      });
+    try {
+      // Get fresh months centered on today with current workouts
+      const today = new Date();
+      const newMonths = getInitialMonths(today, workouts);
+      setMonths(newMonths);
+      currentMonthIndex.current = 3; // Reset to center index
       
-      // Ensure the month title is updated immediately
-      if (onMonthChange) {
-        onMonthChange(newMonths[currentMonthIndex.current]);
-      }
-    });
-  }, [onMonthChange, workouts]);
+      // Use InteractionManager to ensure the UI has updated before scrolling
+      InteractionManager.runAfterInteractions(() => {
+        if (flatListRef.current) {
+          flatListRef.current.scrollToIndex({
+            index: currentMonthIndex.current,
+            animated: true,
+            viewPosition: 0.5
+          });
+          
+          // Notify of month change if callback exists
+          if (onMonthChange && newMonths[currentMonthIndex.current]) {
+            onMonthChange(newMonths[currentMonthIndex.current]);
+          }
+        }
+        
+        // Reset loading flags after a delay to ensure we don't trigger additional updates
+        setTimeout(() => {
+          isLoadingRef.current = false;
+          isUpdatingMonths.current = false;
+        }, 500);
+      });
+    } catch (error) {
+      console.error('Error scrolling to today:', error);
+      isLoadingRef.current = false;
+      isUpdatingMonths.current = false;
+    }
+  }, [onMonthChange, workouts]); // Keep minimal dependencies
 
   // Handle scroll events to load more months and update current month
   const handleScroll = useCallback((event: any) => {
