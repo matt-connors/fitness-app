@@ -177,4 +177,105 @@ export function mapRoutineExerciseToExercise(
     rir: routineExercise.rir,
     notes: routineExercise.notes
   };
+}
+
+// Session types
+export interface Session {
+  id: number;
+  userId: number;
+  routineId?: number;
+  name?: string;
+  date: string;
+  duration?: number;
+  notes?: string;
+}
+
+export interface SessionExercise {
+  id: number;
+  sessionId: number;
+  exerciseId: number;
+  exercise?: Exercise;
+}
+
+export interface SessionSet {
+  id: number;
+  sessionExerciseId: number;
+  setNumber: number;
+  reps?: number;
+  weight?: number;
+}
+
+// Also add a helper to map from local exercise format to SessionSet
+export interface ExerciseSet {
+  id: string;
+  weight: string;
+  reps: string;
+  completed: boolean;
+}
+
+// Map from frontend exercise/set to backend SessionSet
+export function mapExerciseSetToSessionSet(
+  set: ExerciseSet,
+  sessionExerciseId: number,
+  setIndex: number
+): Omit<SessionSet, 'id'> {
+  return {
+    sessionExerciseId,
+    setNumber: setIndex + 1,
+    reps: set.reps ? parseInt(set.reps, 10) : undefined,
+    weight: set.weight ? parseFloat(set.weight) : undefined
+  };
+}
+
+// Map from backend format to frontend exercise set format
+export function mapSessionSetToExerciseSet(
+  sessionSet: SessionSet
+): ExerciseSet {
+  return {
+    id: sessionSet.id.toString(),
+    weight: sessionSet.weight?.toString() || '0',
+    reps: sessionSet.reps?.toString() || '0',
+    completed: false
+  };
+}
+
+// Map from frontend exercise to SessionExercise format
+export function mapExerciseToSessionExerciseInput(
+  exercise: any,
+  sessionId: number
+): { sessionId: number, exerciseId: number } {
+  // Similar to mapExerciseToRoutineExerciseInput but simpler
+  let exerciseId: number;
+  
+  // Try to convert exercise ID to a valid number
+  if (typeof exercise.id === 'number') {
+    exerciseId = exercise.id;
+  } else if (typeof exercise.id === 'string' && !isNaN(Number(exercise.id))) {
+    exerciseId = Number(exercise.id);
+  } else {
+    // Fallback
+    exerciseId = 1;
+  }
+
+  return {
+    sessionId,
+    exerciseId
+  };
+}
+
+// Map from backend SessionExercise to frontend exercise format
+export function mapSessionExerciseToExercise(
+  sessionExercise: SessionExercise,
+  sets: SessionSet[] = []
+): any {
+  if (!sessionExercise.exercise) {
+    return null;
+  }
+  
+  return {
+    id: sessionExercise.id.toString(),
+    name: sessionExercise.exercise.name,
+    showRpe: false,
+    sets: sets.map(set => mapSessionSetToExerciseSet(set))
+  };
 } 

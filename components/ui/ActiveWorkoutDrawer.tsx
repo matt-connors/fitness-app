@@ -25,6 +25,19 @@ import ExerciseSets from '@/components/exercise/ExerciseSets';
 import RpeTooltip from '@/components/exercise/RpeTooltip';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useMutation } from '@apollo/client';
+import { 
+    CREATE_SESSION_EXERCISE, 
+    UPDATE_SESSION, 
+    CREATE_SESSION_SET, 
+    UPDATE_SESSION_SET,
+    DELETE_SESSION_EXERCISE,
+    DELETE_SESSION_SET
+} from '@/lib/graphql/mutations';
+import {
+    mapExerciseToSessionExerciseInput,
+    mapExerciseSetToSessionSet
+} from '@/lib/graphql/types';
 
 interface ActiveWorkoutDrawerProps {
     isVisible: boolean;
@@ -55,13 +68,23 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         id: string;
         name: string;
         showRpe: boolean;
+        exerciseId?: number; // Backend exercise ID
+        sessionExerciseId?: number; // Backend session exercise ID
         sets: Array<{
             id: string;
             weight: string;
             reps: string;
             completed: boolean;
+            sessionSetId?: number; // Backend session set ID
         }>;
     }>>([]);
+
+    // GraphQL mutations
+    const [createSessionExercise] = useMutation(CREATE_SESSION_EXERCISE);
+    const [deleteSessionExercise] = useMutation(DELETE_SESSION_EXERCISE);
+    const [createSessionSet] = useMutation(CREATE_SESSION_SET);
+    const [updateSessionSet] = useMutation(UPDATE_SESSION_SET);
+    const [deleteSessionSet] = useMutation(DELETE_SESSION_SET);
 
     // Exercise dropdown management
     const [showExerciseDropdown, setShowExerciseDropdown] = useState<string | null>(null);
@@ -100,6 +123,41 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
     useEffect(() => {
         if (activeWorkout && workoutName !== activeWorkout.name && activeWorkout.name !== 'New Workout') {
             setWorkoutName(activeWorkout.name);
+        }
+    }, [activeWorkout]);
+
+    // Track exercises from activeWorkout if they're loaded from a routine
+    useEffect(() => {
+        if (activeWorkout && activeWorkout.exercises && activeWorkout.exercises.length > 0) {
+            // Only update if we don't have exercises or if the count has changed
+            // This prevents overwriting user changes
+            if (exercises.length === 0 || exercises.length !== activeWorkout.exercises.length) {
+                // Map the activeWorkout exercises to our format
+                const mappedExercises = activeWorkout.exercises.map((exercise: any, index: number) => {
+                    // Create a unique local ID
+                    const exerciseId = `server-${exercise.id || index}`;
+                    
+                    // Map sets if available
+                    const sets = exercise.sets?.map((set: any, setIndex: number) => ({
+                        id: `${exerciseId}-${setIndex + 1}`,
+                        weight: set.weight?.toString() || '0',
+                        reps: set.reps?.toString() || '0',
+                        completed: set.completed || false,
+                        sessionSetId: set.id
+                    })) || [{ id: `${exerciseId}-1`, weight: '0', reps: '0', completed: false }];
+                    
+                    return {
+                        id: exerciseId,
+                        name: exercise.name,
+                        showRpe: exercise.showRpe || false,
+                        exerciseId: exercise.exerciseId,
+                        sessionExerciseId: exercise.id,
+                        sets
+                    };
+                });
+                
+                setExercises(mappedExercises);
+            }
         }
     }, [activeWorkout]);
 
@@ -260,7 +318,22 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                     ...exercise,
                     sets: exercise.sets.map(set => {
                         if (set.id === setId) {
-                            return { ...set, completed: !set.completed };
+                            const updatedSet = { ...set, completed: !set.completed };
+                            
+                            // Update on server if we have set ID
+                            if (activeWorkout?.sessionId && updatedSet.sessionSetId) {
+                                updateSessionSet({
+                                    variables: {
+                                        id: parseInt(updatedSet.sessionSetId.toString(), 10),
+                                        reps: parseInt(updatedSet.reps, 10) || null,
+                                        weight: parseFloat(updatedSet.weight) || null
+                                    }
+                                }).catch(error => {
+                                    console.error('Error updating set:', error);
+                                });
+                            }
+                            
+                            return updatedSet;
                         }
                         return set;
                     })
@@ -270,8 +343,9 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         }));
     };
 
-    const updateSet = (exerciseId: string, setId: string, field: 'weight' | 'reps', value: string) => {
-        setExercises(exercises.map(exercise => {
+    const updateSet = async (exerciseId: string, setId: string, field: 'weight' | 'reps', value: string) => {
+        // First, update local state
+        const updatedExercises = exercises.map(exercise => {
             if (exercise.id === exerciseId) {
                 return {
                     ...exercise,
@@ -284,78 +358,147 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
                 };
             }
             return exercise;
-        }));
-    };
-
-    const addSet = (exerciseId: string) => {
-        setExercises(exercises.map(exercise => {
-            if (exercise.id === exerciseId) {
-                const lastSet = exercise.sets[exercise.sets.length - 1];
-                const newSetId = `${exerciseId}-${exercise.sets.length + 1}`;
-
-                return {
-                    ...exercise,
-                    sets: [
-                        ...exercise.sets,
-                        {
-                            id: newSetId,
-                            weight: lastSet?.weight || '0',
-                            reps: lastSet?.reps || '0',
-                            completed: false
-                        }
-                    ]
-                };
-            }
-            return exercise;
-        }));
-    };
-
-    const removeSet = (exerciseId: string, setIndex: number) => {
-        setExercises(
-            exercises.map(exercise => {
-                if (exercise.id === exerciseId) {
-                    // Don't allow removing the last set
-                    if (exercise.sets.length <= 1) {
-                        return exercise;
+        });
+        
+        setExercises(updatedExercises);
+        
+        // Get the updated set
+        const exercise = updatedExercises.find(e => e.id === exerciseId);
+        const set = exercise?.sets.find(s => s.id === setId);
+        
+        // Update on server if we have session ID and set ID
+        if (activeWorkout?.sessionId && exercise?.sessionExerciseId && set?.sessionSetId) {
+            try {
+                await updateSessionSet({
+                    variables: {
+                        id: parseInt(set.sessionSetId.toString(), 10),
+                        reps: field === 'reps' ? (parseInt(value, 10) || null) : (parseInt(set.reps, 10) || null),
+                        weight: field === 'weight' ? (parseFloat(value) || null) : (parseFloat(set.weight) || null)
                     }
-
-                    // Remove the set at the specified index
-                    const updatedSets = [...exercise.sets];
-                    updatedSets.splice(setIndex, 1);
-
-                    // Renumber the set IDs
-                    updatedSets.forEach((set, idx) => {
-                        set.id = `${exerciseId}-${idx + 1}`;
-                    });
-
-                    return { ...exercise, sets: updatedSets };
-                }
-                return exercise;
-            })
-        );
+                });
+            } catch (error) {
+                console.error('Error updating set:', error);
+            }
+        }
     };
 
-    const addExercise = () => {
-        const newId = (exercises.length + 1).toString();
-        setExercises([
-            ...exercises,
-            {
-                id: newId,
-                name: 'Select an exercise',
-                showRpe: false,
-                sets: [
-                    { id: `${newId}-1`, weight: '0', reps: '0', completed: false }
-                ]
+    const addSet = async (exerciseId: string) => {
+        // Find the exercise
+        const exerciseIndex = exercises.findIndex(e => e.id === exerciseId);
+        if (exerciseIndex === -1) return;
+        
+        const exercise = exercises[exerciseIndex];
+        const lastSet = exercise.sets[exercise.sets.length - 1];
+        const newSetId = `${exerciseId}-${exercise.sets.length + 1}`;
+        
+        // Create new set in local state first
+        const newSet = {
+            id: newSetId,
+            weight: lastSet?.weight || '0',
+            reps: lastSet?.reps || '0',
+            completed: false
+        };
+        
+        const updatedExercises = [...exercises];
+        updatedExercises[exerciseIndex] = {
+            ...exercise,
+            sets: [...exercise.sets, newSet]
+        };
+        
+        setExercises(updatedExercises);
+        
+        // Create set on server if we have session ID
+        if (activeWorkout?.sessionId && exercise.sessionExerciseId) {
+            try {
+                const { data } = await createSessionSet({
+                    variables: {
+                        sessionExerciseId: parseInt(exercise.sessionExerciseId.toString(), 10),
+                        setNumber: exercise.sets.length + 1,
+                        reps: parseInt(newSet.reps, 10) || null,
+                        weight: parseFloat(newSet.weight) || null
+                    }
+                });
+                
+                if (data?.createSessionSet) {
+                    // Update the local state with the server-generated ID
+                    const updatedExercises = [...exercises];
+                    updatedExercises[exerciseIndex].sets[updatedExercises[exerciseIndex].sets.length - 1].sessionSetId = data.createSessionSet.id;
+                    setExercises(updatedExercises);
+                }
+            } catch (error) {
+                console.error('Error creating set:', error);
             }
-        ]);
+        }
+    };
 
+    const removeSet = async (exerciseId: string, setIndex: number) => {
+        // Find the exercise
+        const exerciseIndex = exercises.findIndex(e => e.id === exerciseId);
+        if (exerciseIndex === -1) return;
+        
+        const exercise = exercises[exerciseIndex];
+        
+        // Don't allow removing the last set
+        if (exercise.sets.length <= 1) {
+            return;
+        }
+        
+        const setToRemove = exercise.sets[setIndex];
+        
+        // Remove from server if we have session ID and set ID
+        if (activeWorkout?.sessionId && setToRemove.sessionSetId) {
+            try {
+                await deleteSessionSet({
+                    variables: {
+                        id: parseInt(setToRemove.sessionSetId.toString(), 10)
+                    }
+                });
+            } catch (error) {
+                console.error('Error deleting set:', error);
+            }
+        }
+        
+        // Update local state
+        const updatedExercises = [...exercises];
+        const updatedSets = [...exercise.sets];
+        updatedSets.splice(setIndex, 1);
+        
+        // Renumber the set IDs
+        updatedSets.forEach((set, idx) => {
+            set.id = `${exerciseId}-${idx + 1}`;
+        });
+        
+        updatedExercises[exerciseIndex] = {
+            ...exercise,
+            sets: updatedSets
+        };
+        
+        setExercises(updatedExercises);
+    };
+
+    const addExercise = async () => {
+        let newId = (exercises.length + 1).toString();
+        
+        // Local exercise object
+        const newExercise = {
+            id: newId,
+            name: 'Select an exercise',
+            showRpe: false,
+            sets: [
+                { id: `${newId}-1`, weight: '0', reps: '0', completed: false }
+            ]
+        };
+        
+        // Add to local state first
+        setExercises([...exercises, newExercise]);
+        
         // Open dropdown for the new exercise
         setTimeout(() => {
             setShowExerciseDropdown(newId);
         }, 100);
     };
 
-    const updateExerciseName = (id: string, name: string) => {
+    const updateExerciseName = async (id: string, name: string) => {
         setExercises(exercises.map(exercise => {
             if (exercise.id === id) {
                 return { ...exercise, name };
@@ -364,14 +507,105 @@ export function ActiveWorkoutDrawer({ isVisible, onClose }: ActiveWorkoutDrawerP
         }));
     };
 
-    const removeExercise = (id: string) => {
+    const removeExercise = async (id: string) => {
+        // Find the exercise to remove
+        const exercise = exercises.find(e => e.id === id);
+        
+        // Remove from server if we have session ID and exercise ID
+        if (activeWorkout?.sessionId && exercise?.sessionExerciseId) {
+            try {
+                await deleteSessionExercise({
+                    variables: {
+                        id: parseInt(exercise.sessionExerciseId.toString(), 10)
+                    }
+                });
+            } catch (error) {
+                console.error('Error deleting exercise:', error);
+            }
+        }
+        
+        // Update local state
         setExercises(exercises.filter(exercise => exercise.id !== id));
     };
 
-    const selectExercise = (exerciseId: string, selectedExercise: any) => {
-        updateExerciseName(exerciseId, selectedExercise.name);
+    const selectExercise = async (exerciseId: string, selectedExercise: any) => {
+        // First, update the name locally
+        const updatedExercises = exercises.map(exercise => {
+            if (exercise.id === exerciseId) {
+                return { 
+                    ...exercise, 
+                    name: selectedExercise.name,
+                    exerciseId: selectedExercise.id
+                };
+            }
+            return exercise;
+        });
+        
+        setExercises(updatedExercises);
         setShowExerciseDropdown(null);
         setSearchQuery('');
+        
+        // Create the exercise on the server if we have a session
+        if (activeWorkout?.sessionId) {
+            try {
+                const exerciseToUpdate = updatedExercises.find(e => e.id === exerciseId);
+                if (!exerciseToUpdate) return;
+                
+                // Make sure we pass integers, not strings
+                const { data } = await createSessionExercise({
+                    variables: {
+                        sessionId: parseInt(activeWorkout.sessionId.toString(), 10),
+                        exerciseId: parseInt(selectedExercise.id.toString(), 10)
+                    }
+                });
+                
+                if (data?.createSessionExercise) {
+                    // Update local state with server IDs
+                    const sessionExerciseId = data.createSessionExercise.id;
+                    
+                    // Add the server ID to our local exercise
+                    const finalUpdatedExercises = updatedExercises.map(e => {
+                        if (e.id === exerciseId) {
+                            return { ...e, sessionExerciseId };
+                        }
+                        return e;
+                    });
+                    
+                    setExercises(finalUpdatedExercises);
+                    
+                    // Create sets for this exercise
+                    const exercise = finalUpdatedExercises.find(e => e.id === exerciseId);
+                    if (exercise) {
+                        // Create all sets in sequence
+                        for (let i = 0; i < exercise.sets.length; i++) {
+                            const set = exercise.sets[i];
+                            try {
+                                const setResponse = await createSessionSet({
+                                    variables: {
+                                        sessionExerciseId: parseInt(sessionExerciseId.toString(), 10),
+                                        setNumber: i + 1,
+                                        reps: parseInt(set.reps, 10) || null,
+                                        weight: parseFloat(set.weight) || null
+                                    }
+                                });
+                                
+                                if (setResponse.data?.createSessionSet) {
+                                    // Update local state with server-generated set ID
+                                    set.sessionSetId = setResponse.data.createSessionSet.id;
+                                }
+                            } catch (setError) {
+                                console.error('Error creating set:', setError);
+                            }
+                        }
+                        
+                        // Final update to ensure all set IDs are reflected
+                        setExercises([...finalUpdatedExercises]);
+                    }
+                }
+            } catch (error) {
+                console.error('Error creating exercise:', error);
+            }
+        }
     };
 
     // Calculate combined transform for both opening animation and drag gesture

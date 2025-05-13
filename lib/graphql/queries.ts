@@ -95,4 +95,47 @@ export const GET_EXERCISE_DETAILS = gql`
       overview
     }
   }
+`;
+
+// Session Queries
+export const GET_SESSION = gql`
+  query GetSession($id: Int!) {
+    session(id: $id) {
+      id
+      userId
+      routineId
+      name
+      date
+      duration
+      notes
+    }
+  }
+`;
+
+export const GET_SESSION_EXERCISES = gql`
+  query GetSessionExercises($sessionId: Int!) {
+    sessionExercises(sessionId: $sessionId) {
+      id
+      sessionId
+      exerciseId
+      exercise {
+        id
+        name
+        targetMuscle
+        iconUrl
+      }
+    }
+  }
+`;
+
+export const GET_SESSION_SETS = gql`
+  query GetSessionSets($sessionExerciseId: Int!) {
+    sessionSets(sessionExerciseId: $sessionExerciseId) {
+      id
+      sessionExerciseId
+      setNumber
+      reps
+      weight
+    }
+  }
 `; 

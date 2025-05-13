@@ -1,6 +1,9 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useWorkoutData } from '@/hooks/useWorkoutData';
 import { useRouter } from 'expo-router';
+import { useMutation } from '@apollo/client';
+import { CREATE_SESSION, UPDATE_SESSION } from '@/lib/graphql/mutations';
+import { Alert } from 'react-native';
 
 interface ActiveWorkoutProviderProps {
     children: React.ReactNode;
@@ -8,6 +11,7 @@ interface ActiveWorkoutProviderProps {
 
 interface Workout {
     id: string;
+    sessionId?: number; // Backend session ID
     name: string;
     exercises: Array<any>;
     startTime: Date;
@@ -15,11 +19,12 @@ interface Workout {
     elapsedSeconds: number;
     isPaused: boolean;
     lastPauseTime?: Date;
+    routineId?: number; // Optional reference to a routine
 }
 
 interface ActiveWorkoutContextType {
     activeWorkout: Workout | null;
-    startNewWorkout: (name?: string) => void;
+    startNewWorkout: (name?: string, routineId?: number) => void;
     stopActiveWorkout: () => void;
     togglePauseWorkout: () => void;
     elapsedTime: string;
@@ -32,9 +37,13 @@ const ActiveWorkoutContext = createContext<ActiveWorkoutContextType | undefined>
 export function ActiveWorkoutProvider({ children }: ActiveWorkoutProviderProps) {
     const [activeWorkout, setActiveWorkout] = useState<Workout | null>(null);
     const [elapsedTime, setElapsedTime] = useState('00:00:00');
-    const [timerInterval, setTimerInterval] = useState<NodeJS.Timeout | null>(null);
+    const [timerInterval, setTimerInterval] = useState<number | null>(null);
     const router = useRouter();
     const { saveWorkout } = useWorkoutData();
+
+    // GraphQL mutations
+    const [createSession, { loading: createSessionLoading }] = useMutation(CREATE_SESSION);
+    const [updateSession, { loading: updateSessionLoading }] = useMutation(UPDATE_SESSION);
 
     // Start the workout timer
     const startTimer = () => {
@@ -95,14 +104,14 @@ export function ActiveWorkoutProvider({ children }: ActiveWorkoutProviderProps) 
     };
 
     // Stop the active workout
-    const stopActiveWorkout = () => {
+    const stopActiveWorkout = async () => {
         if (activeWorkout) {
             if (timerInterval) {
                 clearInterval(timerInterval);
                 setTimerInterval(null);
             }
             
-            // Calculate final stats and save
+            // Calculate final stats 
             const now = new Date();
             let finalElapsedSeconds = activeWorkout.elapsedSeconds;
             
@@ -116,8 +125,24 @@ export function ActiveWorkoutProvider({ children }: ActiveWorkoutProviderProps) 
                 elapsedSeconds: finalElapsedSeconds
             };
             
-            // Save the workout to history
+            // Save the workout to local history
             saveWorkout(completedWorkout);
+            
+            // Update session in backend if we have a session ID
+            if (activeWorkout.sessionId) {
+                try {
+                    await updateSession({
+                        variables: {
+                            id: parseInt(activeWorkout.sessionId.toString(), 10),
+                            duration: Math.round(finalElapsedSeconds),
+                            name: activeWorkout.name
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error updating session:', error);
+                    Alert.alert('Error', 'Failed to save workout data to the server');
+                }
+            }
             
             // Reset state
             setActiveWorkout(null);
@@ -126,19 +151,62 @@ export function ActiveWorkoutProvider({ children }: ActiveWorkoutProviderProps) 
     };
 
     // Start a new workout
-    const startNewWorkout = (name = "Quick Workout") => {
-        // Create a new workout
-        const newWorkout: Workout = {
-            id: Date.now().toString(),
-            name,
-            exercises: [],
-            startTime: new Date(),
-            elapsedSeconds: 0,
-            isPaused: false
-        };
-        
-        setActiveWorkout(newWorkout);
-        setElapsedTime('00:00:00');
+    const startNewWorkout = async (name = "Quick Workout", routineId?: number) => {
+        try {
+            // Create a session in the backend first
+            const { data } = await createSession({
+                variables: {
+                    name,
+                    routineId: routineId ? parseInt(routineId.toString(), 10) : null,
+                    date: new Date().toISOString()
+                }
+            });
+            
+            if (!data || !data.createSession) {
+                throw new Error('Failed to create session');
+            }
+            
+            // Create a new workout with the session ID
+            const newWorkout: Workout = {
+                id: Date.now().toString(),
+                sessionId: data.createSession.id,
+                name,
+                routineId,
+                exercises: [],
+                startTime: new Date(),
+                elapsedSeconds: 0,
+                isPaused: false
+            };
+            
+            setActiveWorkout(newWorkout);
+            setElapsedTime('00:00:00');
+        } catch (error) {
+            console.error('Error creating session:', error);
+            Alert.alert(
+                'Error', 
+                'Failed to create workout session. Starting offline workout instead.',
+                [
+                    { 
+                        text: 'OK',
+                        onPress: () => {
+                            // Fallback to local workout without server sync
+                            const newWorkout: Workout = {
+                                id: Date.now().toString(),
+                                name,
+                                routineId,
+                                exercises: [],
+                                startTime: new Date(),
+                                elapsedSeconds: 0,
+                                isPaused: false
+                            };
+                            
+                            setActiveWorkout(newWorkout);
+                            setElapsedTime('00:00:00');
+                        }
+                    }
+                ]
+            );
+        }
     };
 
     // Update the workout name

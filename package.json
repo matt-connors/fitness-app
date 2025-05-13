@@ -27,7 +27,7 @@
     "@shopify/flash-list": "1.7.6",
     "@urql/exchange-graphcache": "^7.2.3",
     "@urql/storage-rn": "^1.1.1",
-    "expo": "^53.0.5",
+    "expo": "^53.0.9",
     "expo-blur": "~14.1.4",
     "expo-constants": "~17.1.5",
     "expo-dev-client": "~5.1.7",

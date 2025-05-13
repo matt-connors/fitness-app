@@ -26,12 +26,12 @@ import { useRouter } from 'expo-router';
 
 // Mock data for routines
 const LIBRARY_ROUTINES = [
-    { id: 'lib1', name: 'Full Body Strength', type: 'Strength', duration: '45 min' },
-    { id: 'lib2', name: 'Upper/Lower Split', type: 'Strength', duration: '60 min' },
-    { id: 'lib3', name: 'HIIT Cardio', type: 'Cardio', duration: '30 min' },
-    { id: 'lib4', name: 'Push/Pull/Legs', type: 'Strength', duration: '75 min' },
-    { id: 'lib5', name: 'Core Focus', type: 'Core', duration: '20 min' },
-    { id: 'lib6', name: 'Mobility & Flexibility', type: 'Mobility', duration: '40 min' },
+    { id: '1', name: 'Full Body Strength', type: 'Strength', duration: '45 min' },
+    { id: '2', name: 'Upper/Lower Split', type: 'Strength', duration: '60 min' },
+    { id: '3', name: 'HIIT Cardio', type: 'Cardio', duration: '30 min' },
+    { id: '4', name: 'Push/Pull/Legs', type: 'Strength', duration: '75 min' },
+    { id: '5', name: 'Core Focus', type: 'Core', duration: '20 min' },
+    { id: '6', name: 'Mobility & Flexibility', type: 'Mobility', duration: '40 min' },
 ];
 
 interface WorkoutDrawerProps {
@@ -324,7 +324,10 @@ export function WorkoutDrawer({
                                             ]}
                                             onPress={() => {
                                                 closeDrawerWithGesture();
-                                                onSelectRoutine(routine);
+                                                onSelectRoutine({
+                                                    ...routine,
+                                                    id: parseInt(routine.id, 10) // Convert string ID to number for the API
+                                                });
                                             }}
                                         >
                                             <View style={styles.routineInfo}>
